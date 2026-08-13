@@ -1,0 +1,18 @@
+import 'regenerator-runtime'
+
+import Phaser from 'phaser'
+
+import SceneKeys from './consts/SceneKeys'
+import registerScenes from './registerScenes'
+
+import config from './config'
+
+import initI18n from './i18n'
+
+initI18n()
+
+const game = new Phaser.Game(config)
+
+registerScenes(game)
+
+game.scene.start(SceneKeys.Bootstrap)

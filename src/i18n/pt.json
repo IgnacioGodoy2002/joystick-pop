@@ -1,0 +1,35 @@
+{
+	"titleScreen": {
+		"title": "Joystick",
+		"titleSuffix": "Pop!",
+		"play": "Jogar",
+		"howToPlay": "Como Jogar"
+	},
+	"howToPlay": {
+		"title": "Como Jogar",
+		"body": "Mire e atire para combinar 3 ou mais botões do mesmo símbolo.\nLimpe o tabuleiro antes que ele chegue ao fundo!"
+	},
+	"pause": {
+		"title": "Pausado",
+		"continue": "Continuar"
+	},
+	"gameOver": {
+		"title": "Fim de\nJogo",
+		"tryAgain": "Tentar Novamente",
+		"score": "Pontuação: {{score}}",
+		"record": "Recorde: {{record}}",
+		"newRecord": "Novo recorde!"
+	},
+	"gameUI": {
+		"score": "Pontuação: {{score}}"
+	},
+	"countdown": {
+		"three": "3",
+		"two": "2",
+		"one": "1",
+		"go": "Vai!"
+	},
+	"common": {
+		"back": "Voltar"
+	}
+}

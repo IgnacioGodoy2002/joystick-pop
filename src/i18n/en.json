@@ -1,0 +1,35 @@
+{
+	"titleScreen": {
+		"title": "Joystick",
+		"titleSuffix": "Pop!",
+		"play": "Play",
+		"howToPlay": "How to Play"
+	},
+	"howToPlay": {
+		"title": "How to Play",
+		"body": "Aim and shoot to match 3+ buttons of the same symbol.\nClear them before they reach the bottom!"
+	},
+	"pause": {
+		"title": "Paused",
+		"continue": "Continue"
+	},
+	"gameOver": {
+		"title": "Game\nOver",
+		"tryAgain": "Try Again",
+		"score": "Score: {{score}}",
+		"record": "Record: {{record}}",
+		"newRecord": "New record!"
+	},
+	"gameUI": {
+		"score": "Score: {{score}}"
+	},
+	"countdown": {
+		"three": "3",
+		"two": "2",
+		"one": "1",
+		"go": "Go!"
+	},
+	"common": {
+		"back": "Back"
+	}
+}
