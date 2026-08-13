@@ -16,6 +16,13 @@ import SuraIntegrationService from '~/integration/sura/SuraIntegrationService'
 
 const DPR = window.devicePixelRatio
 
+// calibrated so a 900px-tall canvas (the desktop baseline) keeps generating
+// exactly 6 initial rows and the same starting descent it always had —
+// taller/narrower screens (real phones) get proportionally more of both
+const INITIAL_GRID_HEIGHT_RATIO = 0.384
+const BASE_STARTING_DESCENT_RATIO = 300 / 900
+const MIN_INITIAL_ROWS = 6
+
 enum GameState
 {
 	Playing,
@@ -67,12 +74,20 @@ export default class Game extends Phaser.Scene
 
 		this.grid = new BallGrid(this, staticBallPool)
 		this.grid.setLayoutData(new BallLayoutData(this.growthModel))
-			.generate()
+
+		const initialRows = Math.max(
+			MIN_INITIAL_ROWS,
+			Math.round((height * INITIAL_GRID_HEIGHT_RATIO) / this.grid.ballInterval)
+		)
+		this.grid.generate(initialRows)
 
 		this.physics.add.collider(ballPool, staticBallPool, this.handleBallHitGrid, this.processBallHitGrid, this)
 
 		this.descentController = new DescentController(this, this.grid, this.growthModel)
-		this.descentController.setStartingDescent(300)
+
+		const extraRows = Math.max(0, initialRows - MIN_INITIAL_ROWS)
+		const startingDescent = (height * BASE_STARTING_DESCENT_RATIO) + (extraRows * this.grid.ballInterval)
+		this.descentController.setStartingDescent(startingDescent)
 
 		this.sfx?.handleShootBall(this.shooter.onShoot())
 		this.sfx?.handleBallAttached(this.grid.onBallAttached())

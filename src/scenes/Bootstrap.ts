@@ -31,6 +31,13 @@ export default class Bootstrap extends Phaser.Scene
 		this.resize()
 		this.initSuraIntegration()
 
+		// el navegador mobile puede colapsar la barra de direcciones después
+		// de la carga inicial, agrandando el contenedor real sin que Phaser
+		// se entere — sin este listener, escenas creadas más tarde (Pause,
+		// GameOver) miden un scale.height viejo y quedan cortas respecto a
+		// la pantalla real ya crecida
+		window.addEventListener('resize', () => this.resize())
+
 		this.scene.run(SceneKeys.Preload)
 
 		const x = this.scale.width * 0.5

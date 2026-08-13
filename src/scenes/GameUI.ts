@@ -8,6 +8,11 @@ import { i18next } from '~/i18n'
 
 const DPR = window.devicePixelRatio
 
+// calibrated so a 900px-tall canvas (the desktop baseline) keeps the
+// original 100px-tall header — taller screens get a proportional header
+// instead of a DPR-only one, so it doesn't swallow the first grid row
+const HEADER_HEIGHT_RATIO = 100 / 900
+
 declare global
 {
 	interface GameUiInitData
@@ -33,7 +38,10 @@ export default class GameUI extends Phaser.Scene
 	create(data?: GameUiInitData)
 	{
 		const width = this.scale.width
-		this.add.rectangle(width * 0.5, 0, width, 100 * DPR, DarkColor, 0.7)
+		const height = this.scale.height
+		const headerHeight = height * HEADER_HEIGHT_RATIO
+
+		this.add.rectangle(width * 0.5, 0, width, headerHeight, DarkColor, 0.7)
 
 		const offsetX = 10 * DPR
 		const offsetY = 10 * DPR

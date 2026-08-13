@@ -6,6 +6,12 @@ import button from '~/ui/Buttons'
 import SceneKeys from '~/consts/SceneKeys'
 import { i18next } from '~/i18n'
 
+const DPR = window.devicePixelRatio
+
+// fixed gap between the wrapped body text and the Back button, instead of
+// assuming the text always fits within a fixed fraction of the screen
+const BACK_BUTTON_MARGIN = 40 * DPR
+
 export default class HowToPlay extends Phaser.Scene
 {
 	create()
@@ -47,7 +53,9 @@ export default class HowToPlay extends Phaser.Scene
 		})
 		.setOrigin(0.5, 0.5)
 
-		const backBtn = this.add.dom(x, height * 0.68, button(i18next.t('common.back')))
+		const backBtnY = body.y + (body.height * 0.5) + BACK_BUTTON_MARGIN
+
+		const backBtn = this.add.dom(x, backBtnY, button(i18next.t('common.back')))
 			.setScale(0, 0)
 			.addListener('click').on('click', () => {
 				this.scene.start(SceneKeys.TitleScreen)
