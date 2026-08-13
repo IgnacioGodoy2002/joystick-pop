@@ -63,7 +63,7 @@ export default class Game extends Phaser.Scene
 		this.physics.world.setBoundsCollision(true, true, false, false)
 		this.physics.world.setFPS(180)
 
-		this.shooter = this.add.shooter(width * 0.5, height - (70 * DPR), '')
+		this.shooter = this.add.shooter(width * 0.5, height - (20 * DPR), '')
 		this.shooter.setGuide(new ShotGuide(this))
 
 		const ballPool = this.add.ballPool(TextureKeys.Ball)
@@ -73,7 +73,9 @@ export default class Game extends Phaser.Scene
 		const staticBallPool = this.add.staticBallPool(TextureKeys.Ball)
 
 		this.grid = new BallGrid(this, staticBallPool)
-		this.grid.setLayoutData(new BallLayoutData(this.growthModel))
+
+		const columns = Math.floor(width / this.grid.ballWidth)
+		this.grid.setLayoutData(new BallLayoutData(this.growthModel, columns))
 
 		const initialRows = Math.max(
 			MIN_INITIAL_ROWS,

@@ -10,15 +10,17 @@ const AllColors = [
 export default class BallLayoutData
 {
 	private growthModel: IGrowthModel
+	private columns: number
 
-	constructor(growthModel: IGrowthModel)
+	constructor(growthModel: IGrowthModel, columns = 8)
 	{
 		this.growthModel = growthModel
+		this.columns = columns
 	}
 
 	getNextRow()
 	{
-		const count = this.growthModel.getNext(8)
+		const count = this.growthModel.getNext(this.columns)
 
 		// TODO: potentially randomize positions when less than 6 available
 

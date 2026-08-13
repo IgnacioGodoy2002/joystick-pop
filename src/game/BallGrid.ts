@@ -55,6 +55,11 @@ export default class BallGrid
 		return this.size.height * 0.8
 	}
 
+	get ballWidth()
+	{
+		return this.size.width
+	}
+
 	get bottom()
 	{
 		if (this.grid.length <= 0)

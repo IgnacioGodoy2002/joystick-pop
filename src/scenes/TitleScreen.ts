@@ -137,7 +137,7 @@ export default class HelloWorldScene extends Phaser.Scene
 
 				const option = this.add.image(width - offsetX, optionY, LANGUAGE_FLAG_TEXTURES[lang])
 				.setOrigin(1, 0)
-				.setDisplaySize(32, 21)
+				.setDisplaySize(48, 32)
 				.setDepth(4)
 				.setInteractive({ useHandCursor: true })
 				.on(Phaser.Input.Events.POINTER_DOWN, () => {
@@ -150,7 +150,7 @@ export default class HelloWorldScene extends Phaser.Scene
 
 		this.add.image(width - offsetX, offsetY, LANGUAGE_FLAG_TEXTURES[currentLanguage] ?? TextureKeys.FlagEs)
 		.setOrigin(1, 0)
-		.setDisplaySize(32, 21)
+		.setDisplaySize(48, 32)
 		.setDepth(4)
 		.setInteractive({ useHandCursor: true })
 		.on(Phaser.Input.Events.POINTER_DOWN, () => {
