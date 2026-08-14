@@ -7,12 +7,14 @@ declare global
 	{
 		spawn(x: number, y: number): IBall
 		despawn(ball: IBall)
+		setBallSize(size: number)
 	}
 }
 
 export default class BallPool extends Phaser.Physics.Arcade.Group implements IBallPool
 {
 	private texture: string
+	private ballSize?: number
 
 	constructor(world: Phaser.Physics.Arcade.World, scene: Phaser.Scene, texture: string, config: Phaser.Types.Physics.Arcade.PhysicsGroupConfig | Phaser.Types.GameObjects.Group.GroupCreateConfig = {})
 	{
@@ -31,6 +33,11 @@ export default class BallPool extends Phaser.Physics.Arcade.Group implements IBa
 		this.texture = texture
 	}
 
+	setBallSize(size: number)
+	{
+		this.ballSize = size
+	}
+
 	spawn(x: number, y: number)
 	{
 		const spawnExisting = this.countActive(false) > 0
@@ -40,6 +47,11 @@ export default class BallPool extends Phaser.Physics.Arcade.Group implements IBa
 		if (!ball)
 		{
 			return ball
+		}
+
+		if (this.ballSize)
+		{
+			ball.setDisplaySize(this.ballSize, this.ballSize)
 		}
 
 		ball.useCircleCollider()

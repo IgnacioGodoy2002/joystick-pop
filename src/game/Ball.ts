@@ -35,7 +35,7 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite implements IBall
 
 	get radius()
 	{
-		return this.width * 0.5
+		return this.displayWidth * 0.5
 	}
 
 	get physicsRadius()

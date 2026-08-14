@@ -83,7 +83,7 @@ export default class BallGrid
 		this.pool = pool
 
 		const sample = this.pool.spawn(0, 0)
-		this.size = new Phaser.Structs.Size(sample.width, sample.height)
+		this.size = new Phaser.Structs.Size(sample.displayWidth, sample.displayHeight)
 		this.pool.despawn(sample)
 	}
 

@@ -23,6 +23,11 @@ const INITIAL_GRID_HEIGHT_RATIO = 0.384
 const BASE_STARTING_DESCENT_RATIO = 300 / 900
 const MIN_INITIAL_ROWS = 6
 
+// mismo breakpoint que .game-wrapper en styles.scss — abajo de esto el
+// juego ocupa toda la pantalla en vez del ancho fijo de escritorio
+const MOBILE_BREAKPOINT = 768
+const MAX_MOBILE_COLUMNS = 7
+
 enum GameState
 {
 	Playing,
@@ -62,18 +67,31 @@ export default class Game extends Phaser.Scene
 		this.physics.world.setBoundsCollision(true, true, false, false)
 		this.physics.world.setFPS(180)
 
-		this.shooter = this.add.shooter(width * 0.5, height - (20 * DPR), '')
+		const isMobile = window.innerWidth <= MOBILE_BREAKPOINT
+
+		const shooterOffsetY = isMobile ? (20 * DPR) : (100 * DPR)
+		this.shooter = this.add.shooter(width * 0.5, height - shooterOffsetY, '')
 		this.shooter.setGuide(new ShotGuide(this))
 
+		const mobileBallSize = isMobile ? (width / MAX_MOBILE_COLUMNS) : undefined
+
 		const ballPool = this.add.ballPool(TextureKeys.Ball)
+		if (mobileBallSize)
+		{
+			ballPool.setBallSize(mobileBallSize)
+		}
 		this.shooter.setBallPool(ballPool)
 		this.shooter.attachBall()
 
 		const staticBallPool = this.add.staticBallPool(TextureKeys.Ball)
+		if (mobileBallSize)
+		{
+			staticBallPool.setBallSize(mobileBallSize)
+		}
 
 		this.grid = new BallGrid(this, staticBallPool)
 
-		const columns = Math.floor(width / this.grid.ballWidth)
+		const columns = isMobile ? MAX_MOBILE_COLUMNS : Math.floor(width / this.grid.ballWidth)
 		this.growthModel = new BallGrowthModel(columns)
 		this.grid.setLayoutData(new BallLayoutData(this.growthModel, columns))
 
@@ -185,7 +203,7 @@ export default class Game extends Phaser.Scene
 		}
 
 		const distanceSq = Phaser.Math.Distance.Squared(b.x, b.y, gb.x, gb.y)
-		const minDistance = b.width * 0.9
+		const minDistance = b.displayWidth * 0.9
 		const mdSq = minDistance * minDistance
 
 		return distanceSq <= mdSq
@@ -212,8 +230,8 @@ export default class Game extends Phaser.Scene
 			.negate()
 
 		// get where the ball would be at contact with grid
-		const x = gx + (directionToGrid.x * gb.width)
-		const y = gy + (directionToGrid.y * gb.width)
+		const x = gx + (directionToGrid.x * gb.displayWidth)
+		const y = gy + (directionToGrid.y * gb.displayWidth)
 
 		this.shooter?.returnBall(b)
 
