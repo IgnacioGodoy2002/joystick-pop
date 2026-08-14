@@ -850,6 +850,116 @@ export default class BallGrid
 		return rowList.isStaggered
 	}
 
+	private getHexNeighborPositions(row: number, col: number)
+	{
+		const isStaggered = this.isRowStaggered(row)
+
+		const topLeft = isStaggered ? { row: row - 1, col: col - 1 } : { row: row - 1, col }
+		const topRight = isStaggered ? { row: row - 1, col } : { row: row - 1, col: col + 1 }
+		const bottomLeft = isStaggered ? { row: row + 1, col: col - 1 } : { row: row + 1, col }
+		const bottomRight = isStaggered ? { row: row + 1, col } : { row: row + 1, col: col + 1 }
+
+		return {
+			topLeft,
+			topRight,
+			right: { row, col: col + 1 },
+			bottomRight,
+			bottomLeft,
+			left: { row, col: col - 1 }
+		}
+	}
+
+	// every staggered/unstaggered row has one structural padding slot at
+	// one end used purely for hex alignment (see addRowToFront) — that slot
+	// is never a real gap in the playfield, just an artifact of the layout
+	private isPaddingSlot(row: number, col: number)
+	{
+		const list = this.grid[row]
+		if (this.isRowStaggered(row))
+		{
+			return col === 0
+		}
+		return col === list.length - 1
+	}
+
+	// any other empty cell within the populated grid is a real gap a shot
+	// could otherwise sail through — a single missing ball, or an interior
+	// cell of a bigger multi-ball void left behind by a match-clear
+	private isInternalHole(row: number, col: number)
+	{
+		if (this.getAt(row, col))
+		{
+			return false
+		}
+
+		return !this.isPaddingSlot(row, col)
+	}
+
+	/**
+	 * The shot ball's collision circle is intentionally smaller than its
+	 * visual size (see Ball.physicsRadius) to keep tight shots feeling
+	 * good — but that also means a fast shot can slip through an internal
+	 * hole without ever overlapping a neighbor's collider. This checks the
+	 * ball's current position against a proximity threshold; if it's within
+	 * that distance of any neighbor of an internal hole, that neighbor is
+	 * returned so the caller can force an attach there instead of letting
+	 * the ball keep flying through the gap.
+	 *
+	 * Threshold: a hole's DIAGONAL neighbors (the ones directly bordering
+	 * its narrowest point) sit at distance width*sqrt(0.25 + 0.8^2) ≈
+	 * 0.943 * displayWidth from the hole's center — noticeably more than
+	 * the 0.9 * displayWidth Game.processBallHitGrid uses for direct
+	 * ball-vs-ball hits. A ball passing dead-center through the hole would
+	 * never come within 0.9x of anything, so reusing that threshold here
+	 * would never fire. displayWidth * 1.0 (full visual "touching"
+	 * distance between two equal balls) comfortably covers that ~0.943x
+	 * worst case with margin to spare.
+	 */
+	checkHoleGuard(ball: IBall)
+	{
+		const threshold = ball.displayWidth * 1.0
+		const thresholdSq = threshold * threshold
+
+		const rows = this.grid.length
+		for (let row = 1; row < rows; ++row)
+		{
+			const list = this.grid[row]
+			for (let col = 0; col < list.length; ++col)
+			{
+				if (!this.isInternalHole(row, col))
+				{
+					continue
+				}
+
+				const neighbors = this.getHexNeighborPositions(row, col)
+				const candidates = [
+					neighbors.topLeft, neighbors.topRight,
+					neighbors.right,
+					neighbors.bottomRight, neighbors.bottomLeft,
+					neighbors.left
+				]
+
+				for (let i = 0; i < candidates.length; ++i)
+				{
+					const pos = candidates[i]
+					const neighbor = this.getAt(pos.row, pos.col)
+					if (!neighbor)
+					{
+						continue
+					}
+
+					const distSq = Phaser.Math.Distance.Squared(ball.x, ball.y, neighbor.x, neighbor.y)
+					if (distSq <= thresholdSq)
+					{
+						return neighbor
+					}
+				}
+			}
+		}
+
+		return null
+	}
+
 	private cleanUpEmptyRows()
 	{
 		const size = this.grid.length

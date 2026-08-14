@@ -5,10 +5,12 @@ import { Subject, Observable } from 'rxjs'
 import TextureKeys from '~/consts/TextureKeys'
 
 const DPR = window.devicePixelRatio
-const RADIUS = 100 * DPR
+const BASE_RADIUS = 100 * DPR
+const BASE_GAP = -15 * DPR
+const BASE_WIDTH = 130
+const BASE_HEIGHT = 161
 
 const HALF_PI = Math.PI * 0.5
-const GAP = -15 * DPR
 
 declare global
 {
@@ -33,19 +35,28 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 	private ballPool?: IBallPool
 	private shotGuide?: IShotGuide
 
+	private scaleFactor: number
+
 	private shootSubject = new Subject<IBall>()
 
 	get radius()
 	{
-		return RADIUS
+		return BASE_RADIUS * this.scaleFactor
 	}
 
-	constructor(scene: Phaser.Scene, x: number, y: number, texture: string)
+	private get gap()
+	{
+		return BASE_GAP * this.scaleFactor
+	}
+
+	constructor(scene: Phaser.Scene, x: number, y: number, texture: string, scaleFactor = 1)
 	{
 		super(scene, x, y)
 
+		this.scaleFactor = scaleFactor
+
 		const base = scene.add.image(0, 0, TextureKeys.Shooter)
-		base.setDisplaySize(130, 161)
+		base.setDisplaySize(BASE_WIDTH * scaleFactor, BASE_HEIGHT * scaleFactor)
 
 		this.add(base)
 
@@ -101,14 +112,19 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 
 		const ballRadius = this.ball.radius
 
-		this.ball.x = this.x - (vec.x * (RADIUS + ballRadius + GAP))
-		this.ball.y = this.y - (vec.y * (RADIUS + ballRadius + GAP))
+		this.ball.x = this.x - (vec.x * (this.radius + ballRadius + this.gap))
+		this.ball.y = this.y - (vec.y * (this.radius + ballRadius + this.gap))
+
+		// setDisplaySize() en el pool ya dejó la escala correcta para la
+		// plataforma actual (nativa en desktop, agrandada en mobile) — hay
+		// que animar hacia ESA escala, no a 1, o la bola vuelve al tamaño nativo
+		const targetScale = this.ball.scale
 
 		this.ball.scale = 0
 
 		this.scene.add.tween({
 			targets: this.ball,
-			scale: 1,
+			scale: targetScale,
 			ease: 'Bounce.easeOut',
 			duration: 300
 		})
@@ -145,8 +161,8 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 		const ballRadius = this.ball.radius
 		const physicsRadius = this.ball.physicsRadius
 
-		this.ball.x = this.x + (vec.x * (RADIUS + ballRadius + GAP))
-		this.ball.y = this.y + (vec.y * (RADIUS + ballRadius + GAP))
+		this.ball.x = this.x + (vec.x * (this.radius + ballRadius + this.gap))
+		this.ball.y = this.y + (vec.y * (this.radius + ballRadius + this.gap))
 
 		this.shotGuide?.showFrom(this.ball.x, this.ball.y, vec, physicsRadius, this.ball.color)
 	}
@@ -179,7 +195,7 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 	}
 }
 
-Phaser.GameObjects.GameObjectFactory.register('shooter', function (x: number, y: number, key: string) {
+Phaser.GameObjects.GameObjectFactory.register('shooter', function (x: number, y: number, key: string, scaleFactor: number = 1) {
 	// @ts-ignore
-	return this.displayList.add(new Shooter(this.scene, x, y, key))
+	return this.displayList.add(new Shooter(this.scene, x, y, key, scaleFactor))
 })

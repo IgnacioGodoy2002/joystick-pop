@@ -39,6 +39,7 @@ export default class Game extends Phaser.Scene
 {
 	private shooter?: IShooter
 	private grid?: BallGrid
+	private ballPool?: IBallPool
 
 	private growthModel!: IGrowthModel
 	private descentController?: DescentController
@@ -69,13 +70,20 @@ export default class Game extends Phaser.Scene
 
 		const isMobile = window.innerWidth <= MOBILE_BREAKPOINT
 
-		const shooterOffsetY = isMobile ? (20 * DPR) : (60 * DPR)
-		this.shooter = this.add.shooter(width * 0.5, height - shooterOffsetY, '')
-		this.shooter.setGuide(new ShotGuide(this))
-
 		const mobileBallSize = isMobile ? (width / MAX_MOBILE_COLUMNS) : undefined
 
+		// el shooter y el "próximo" botón fueron calibrados contra el tamaño
+		// nativo de la textura de bola — si mobile la agranda vía setDisplaySize,
+		// el shooter tiene que escalar en la misma proporción para no quedar chico
+		const nativeBallWidth = this.textures.get(TextureKeys.Ball).getSourceImage().width
+		const shooterScale = mobileBallSize ? (mobileBallSize / nativeBallWidth) : 1
+
+		const shooterOffsetY = isMobile ? (20 * DPR) : (60 * DPR)
+		this.shooter = this.add.shooter(width * 0.5, height - shooterOffsetY, '', shooterScale)
+		this.shooter.setGuide(new ShotGuide(this))
+
 		const ballPool = this.add.ballPool(TextureKeys.Ball)
+		this.ballPool = ballPool
 		if (mobileBallSize)
 		{
 			ballPool.setBallSize(mobileBallSize)
@@ -209,9 +217,13 @@ export default class Game extends Phaser.Scene
 		return distanceSq <= mdSq
 	}
 
-	private async handleBallHitGrid(ball: Phaser.GameObjects.GameObject, gridBall: Phaser.GameObjects.GameObject)
+	private handleBallHitGrid(ball: Phaser.GameObjects.GameObject, gridBall: Phaser.GameObjects.GameObject)
 	{
-		const b = ball as IBall
+		return this.resolveBallGridHit(ball as IBall, gridBall as IBall)
+	}
+
+	private async resolveBallGridHit(b: IBall, gb: IBall)
+	{
 		const bx = b.x
 		const by = b.y
 		const color = b.color
@@ -219,7 +231,6 @@ export default class Game extends Phaser.Scene
 		const vx = b.body.deltaX()
 		const vy = b.body.deltaY()
 
-		const gb = gridBall as IBall
 		const gx = gb.x
 		const gy = gb.y
 
@@ -255,6 +266,38 @@ export default class Game extends Phaser.Scene
 		this.descentController?.descend()
 	}
 
+	// la bola disparada usa un collider más chico que su tamaño visual
+	// (ver Ball.physicsRadius, calibrado para que los tiros ajustados se
+	// sientan bien) — eso puede dejarla pasar de largo por un hueco interno
+	// de la grilla sin llegar a solapar el collider de ningún vecino. Este
+	// chequeo corre cada frame sobre la bola en vuelo y, si está lo bastante
+	// cerca de algún vecino de un hueco interno (ver BallGrid.checkHoleGuard),
+	// fuerza el encastre ahí en vez de dejarla seguir de largo
+	private checkHoleGuard()
+	{
+		if (!this.ballPool || !this.grid)
+		{
+			return
+		}
+
+		const children = this.ballPool.getChildren()
+		for (let i = 0; i < children.length; ++i)
+		{
+			const b = children[i] as IBall
+			if (!b.active || !b.body?.enable)
+			{
+				continue
+			}
+
+			const gb = this.grid.checkHoleGuard(b)
+			if (gb)
+			{
+				this.resolveBallGridHit(b, gb)
+				return
+			}
+		}
+	}
+
 	update(t, dt)
 	{
 		if (this.state === GameState.GameOver || this.state === GameState.GameWin)
@@ -270,6 +313,7 @@ export default class Game extends Phaser.Scene
 		this.growthModel.update(dt)
 		this.shooter.update(dt)
 		this.descentController.update(dt)
+		this.checkHoleGuard()
 
 		const dcy = this.descentController.yPosition
 		if (dcy > this.shooter.y - this.shooter.radius)
