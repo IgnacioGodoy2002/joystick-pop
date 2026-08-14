@@ -522,6 +522,12 @@ export default class BallGrid
 
 	private insertAt(row: number, col: number, ball: IBall)
 	{
+		if (row < 0 || col < 0)
+		{
+			console.error(`BallGrid.insertAt: posición inválida row=${row} col=${col}, se ignora la inserción`)
+			return
+		}
+
 		if (row >= this.grid.length)
 		{
 			const count = row - (this.grid.length - 1)
@@ -535,6 +541,13 @@ export default class BallGrid
 		}
 
 		const rowList = this.grid[row]
+
+		if (!rowList)
+		{
+			console.error(`BallGrid.insertAt: la fila row=${row} no existe, se ignora la inserción`)
+			return
+		}
+
 		for (let i = 0; i <= col; ++i)
 		{
 			if (rowList.length <= i)

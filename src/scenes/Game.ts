@@ -44,7 +44,6 @@ export default class Game extends Phaser.Scene
 	init()
 	{
 		this.state = GameState.Playing
-		this.growthModel = new BallGrowthModel(100)
 
 		this.sfx = new SoundEffectsController(this.sound)
 	}
@@ -75,6 +74,7 @@ export default class Game extends Phaser.Scene
 		this.grid = new BallGrid(this, staticBallPool)
 
 		const columns = Math.floor(width / this.grid.ballWidth)
+		this.growthModel = new BallGrowthModel(columns)
 		this.grid.setLayoutData(new BallLayoutData(this.growthModel, columns))
 
 		const initialRows = Math.max(
@@ -219,7 +219,16 @@ export default class Game extends Phaser.Scene
 
 		this.descentController?.hold()
 
-		await this.grid?.attachBall(x, y, color, gb, vx, vy)
+		try
+		{
+			await this.grid?.attachBall(x, y, color, gb, vx, vy)
+		}
+		catch (error)
+		{
+			// no dejar que un fallo puntual de attachBall (ver BallGrid.insertAt)
+			// congele el juego entero — el shooter tiene que poder seguir tirando
+			console.error('handleBallHitGrid: attachBall falló, se continúa igual', error)
+		}
 
 		await this.descentController?.reversing()
 

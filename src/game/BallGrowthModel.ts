@@ -12,10 +12,18 @@ declare global
 	}
 }
 
+// cuántas filas completas de "colchón" queremos poder generar sin
+// agotar la población, calibrado sobre las 8 columnas fijas originales
+// (100 alcanzaba para ~12 filas) — ahora escala con la cantidad real
+// de columnas en vez de quedar fijo
+const ROWS_OF_INITIAL_BUFFER = 12
+const ROWS_OF_MIN_GROWTH_BUFFER = 2
+
 export default class BallGrowthModel implements IGrowthModel
 {
 	private accumulatedTime = 0
 	private populationCount = 0
+	private columns: number
 
 	private populationChangedSubject: BehaviorSubject<number>
 
@@ -24,10 +32,11 @@ export default class BallGrowthModel implements IGrowthModel
 		return this.populationCount
 	}
 
-	constructor(initialPopulation = 0)
+	constructor(columns: number)
 	{
-		this.populationCount = initialPopulation
-		this.populationChangedSubject = new BehaviorSubject<number>(initialPopulation)
+		this.columns = columns
+		this.populationCount = columns * ROWS_OF_INITIAL_BUFFER
+		this.populationChangedSubject = new BehaviorSubject<number>(this.populationCount)
 	}
 
 	onPopulationChanged()
@@ -65,7 +74,7 @@ export default class BallGrowthModel implements IGrowthModel
 		}
 
 		// increase by 10% of population
-		const increase = Math.max(20, Math.floor(this.populationCount * 0.1))
+		const increase = Math.max(this.columns * ROWS_OF_MIN_GROWTH_BUFFER, Math.floor(this.populationCount * 0.1))
 
 		this.increasePopulation(increase)
 
