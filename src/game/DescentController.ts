@@ -151,7 +151,7 @@ export default class DescentController
 	private handleBallPopulationChanged(count: number)
 	{
 		const s = Math.max(0.3, Math.log(count * .0004))
-		const capped = s > 1.2 ? 1.2 : s
-		this.speed = capped * 0.75
+		const capped = s > 1.4 ? 1.4 : s
+		this.speed = capped * 0.85
 	}
 }

@@ -69,7 +69,7 @@ export default class Game extends Phaser.Scene
 
 		const isMobile = window.innerWidth <= MOBILE_BREAKPOINT
 
-		const shooterOffsetY = isMobile ? (20 * DPR) : (100 * DPR)
+		const shooterOffsetY = isMobile ? (20 * DPR) : (60 * DPR)
 		this.shooter = this.add.shooter(width * 0.5, height - shooterOffsetY, '')
 		this.shooter.setGuide(new ShotGuide(this))
 
