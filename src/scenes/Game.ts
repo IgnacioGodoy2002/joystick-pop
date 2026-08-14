@@ -71,22 +71,30 @@ export default class Game extends Phaser.Scene
 			.fillRect(0, 0, width, height)
 			.setDepth(0)
 
-		this.physics.world.setBounds(0, 0, width, height)
-		this.physics.world.setBoundsCollision(true, true, false, false)
-		this.physics.world.setFPS(180)
-
 		const isMobile = window.innerWidth <= MOBILE_BREAKPOINT
 
 		// tamaño de bola objetivo para la plataforma actual — SIEMPRE explícito,
 		// nunca heredado del tamaño nativo del PNG de la textura de color
 		const ballSize = isMobile ? (width / MAX_MOBILE_COLUMNS) : DESKTOP_BALL_SIZE
 
+		// el rebote contra los bordes izq/der usa el collider físico de la bola
+		// (physicsRadius, más chico que el radio visual — ver Ball.physicsRadius,
+		// calibrado para que los tiros ajustados se sientan bien), así que si el
+		// mundo físico llega hasta el borde real de la pantalla, la bola VISUAL
+		// (más grande) termina sobresaliendo del borde al rebotar. Se angosta el
+		// mundo físico por ese margen para que el punto de reflexión coincida con
+		// el borde visual real de la bola, no con su collider reducido
+		const worldBoundsMarginX = (ballSize * 0.5) - (ballSize * 0.5 * 0.6)
+		this.physics.world.setBounds(worldBoundsMarginX, 0, width - (worldBoundsMarginX * 2), height)
+		this.physics.world.setBoundsCollision(true, true, false, false)
+		this.physics.world.setFPS(180)
+
 		// el shooter y el "próximo" botón fueron calibrados contra
 		// REFERENCE_BALL_SIZE — escalan proporcionalmente al tamaño de bola
 		// real de la plataforma actual para no quedar chicos ni gigantes
 		const shooterScale = ballSize / REFERENCE_BALL_SIZE
 
-		const shooterOffsetY = isMobile ? (20 * DPR) : (60 * DPR)
+		const shooterOffsetY = isMobile ? (50 * DPR) : (60 * DPR)
 		this.shooter = this.add.shooter(width * 0.5, height - shooterOffsetY, '', shooterScale)
 		this.shooter.setGuide(new ShotGuide(this))
 

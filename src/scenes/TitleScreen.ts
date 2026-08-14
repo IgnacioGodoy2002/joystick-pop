@@ -181,7 +181,7 @@ export default class HelloWorldScene extends Phaser.Scene
 
 			const particle = this.add.image(0, 0, texture)
 				.setDepth(1)
-				.setScale(Phaser.Math.FloatBetween(0.6, 0.9))
+				.setScale(Phaser.Math.FloatBetween(0.2, 0.3))
 				.setAlpha(Phaser.Math.FloatBetween(0.15, 0.25))
 
 			this.animateBackgroundParticle(particle, width, height)

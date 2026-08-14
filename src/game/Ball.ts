@@ -86,7 +86,15 @@ export default class Ball extends Phaser.Physics.Arcade.Sprite implements IBall
 		const radius = this.radius
 		const usedRadius = this.physicsRadius
 		const diff = radius - usedRadius
-		this.setCircle(usedRadius, diff, diff)
+
+		// Phaser.setCircle() toma radio/offset en el espacio NATIVO del frame
+		// (sin escalar) y los multiplica por scaleX/scaleY internamente para
+		// calcular el tamaño final del body — como radius/physicsRadius ya
+		// están en píxeles escalados (displayWidth), hay que dividir por la
+		// escala acá o el body queda escalado dos veces y termina mucho más
+		// chico de lo esperado en cualquier plataforma donde scaleX != 1
+		const scale = this.scaleX || 1
+		this.setCircle(usedRadius / scale, diff / scale, diff / scale)
 
 		return this
 	}

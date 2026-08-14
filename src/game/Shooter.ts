@@ -4,9 +4,13 @@ import IShotGuide from '~/types/IShotGuide'
 import { Subject, Observable } from 'rxjs'
 import TextureKeys from '~/consts/TextureKeys'
 
-const DPR = window.devicePixelRatio
-const BASE_RADIUS = 100 * DPR
-const BASE_GAP = -15 * DPR
+// sin *DPR: scaleFactor (ver constructor) ya viene calculado a partir de
+// ballSize/REFERENCE_BALL_SIZE en Game.ts, y ballSize ya está en el mismo
+// espacio "game" multiplicado por DPR que this.scale.width — multiplicar
+// también acá duplicaba el DPR en mobile y alejaba la bola en espera del
+// shooter muy por encima de lo esperado
+const BASE_RADIUS = 100
+const BASE_GAP = -15
 const BASE_WIDTH = 130
 const BASE_HEIGHT = 161
 
