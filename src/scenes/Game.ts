@@ -28,6 +28,13 @@ const MIN_INITIAL_ROWS = 6
 const MOBILE_BREAKPOINT = 768
 const MAX_MOBILE_COLUMNS = 7
 
+// tamaño visual de bola al que está calibrado todo lo demás (shooter,
+// GAP, columnas de desktop) — deliberadamente independiente del tamaño
+// nativo del PNG de las texturas de color, que puede cambiar (ver
+// setBallSize()/setDisplaySize() en BallPool/StaticBallPool)
+const REFERENCE_BALL_SIZE = 72
+const DESKTOP_BALL_SIZE = REFERENCE_BALL_SIZE
+
 enum GameState
 {
 	Playing,
@@ -70,13 +77,14 @@ export default class Game extends Phaser.Scene
 
 		const isMobile = window.innerWidth <= MOBILE_BREAKPOINT
 
-		const mobileBallSize = isMobile ? (width / MAX_MOBILE_COLUMNS) : undefined
+		// tamaño de bola objetivo para la plataforma actual — SIEMPRE explícito,
+		// nunca heredado del tamaño nativo del PNG de la textura de color
+		const ballSize = isMobile ? (width / MAX_MOBILE_COLUMNS) : DESKTOP_BALL_SIZE
 
-		// el shooter y el "próximo" botón fueron calibrados contra el tamaño
-		// nativo de la textura de bola — si mobile la agranda vía setDisplaySize,
-		// el shooter tiene que escalar en la misma proporción para no quedar chico
-		const nativeBallWidth = this.textures.get(TextureKeys.Ball).getSourceImage().width
-		const shooterScale = mobileBallSize ? (mobileBallSize / nativeBallWidth) : 1
+		// el shooter y el "próximo" botón fueron calibrados contra
+		// REFERENCE_BALL_SIZE — escalan proporcionalmente al tamaño de bola
+		// real de la plataforma actual para no quedar chicos ni gigantes
+		const shooterScale = ballSize / REFERENCE_BALL_SIZE
 
 		const shooterOffsetY = isMobile ? (20 * DPR) : (60 * DPR)
 		this.shooter = this.add.shooter(width * 0.5, height - shooterOffsetY, '', shooterScale)
@@ -84,18 +92,12 @@ export default class Game extends Phaser.Scene
 
 		const ballPool = this.add.ballPool(TextureKeys.Ball)
 		this.ballPool = ballPool
-		if (mobileBallSize)
-		{
-			ballPool.setBallSize(mobileBallSize)
-		}
+		ballPool.setBallSize(ballSize)
 		this.shooter.setBallPool(ballPool)
 		this.shooter.attachBall()
 
 		const staticBallPool = this.add.staticBallPool(TextureKeys.Ball)
-		if (mobileBallSize)
-		{
-			staticBallPool.setBallSize(mobileBallSize)
-		}
+		staticBallPool.setBallSize(ballSize)
 
 		this.grid = new BallGrid(this, staticBallPool)
 
