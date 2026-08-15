@@ -27,6 +27,8 @@ export default class GameUI extends Phaser.Scene
 {
 	private score = 0
 	private scoreText?: Phaser.GameObjects.Text
+	private headerRect?: Phaser.GameObjects.Rectangle
+	private pauseIcon?: Phaser.GameObjects.Text
 
 	private subscriptions: SubscriptionLike[] = []
 
@@ -41,7 +43,7 @@ export default class GameUI extends Phaser.Scene
 		const height = this.scale.height
 		const headerHeight = height * HEADER_HEIGHT_RATIO
 
-		this.add.rectangle(width * 0.5, 0, width, headerHeight, DarkColor, 0.7)
+		this.headerRect = this.add.rectangle(width * 0.5, 0, width, headerHeight, DarkColor, 0.7)
 
 		const offsetX = 10 * DPR
 		const offsetY = 10 * DPR
@@ -53,7 +55,7 @@ export default class GameUI extends Phaser.Scene
 		})
 
 		const rx = width - offsetX
-		this.add.text(rx, offsetY, '❚❚', {
+		this.pauseIcon = this.add.text(rx, offsetY, '❚❚', {
 			fontSize: 22 * DPR,
 			fontFamily: 'Righteous'
 		})
@@ -63,6 +65,8 @@ export default class GameUI extends Phaser.Scene
 		.on(Phaser.Input.Events.POINTER_DOWN, () => {
 			this.pauseGame()
 		})
+
+		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
 
 		const suraService = this.registry.get('suraService') as SuraIntegrationService | undefined
 
@@ -78,11 +82,28 @@ export default class GameUI extends Phaser.Scene
 		}
 
 		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+			this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+
 			this.subscriptions.forEach(sub => sub.unsubscribe())
 			this.subscriptions.length = 0
 		})
 
 		this.initWithData(data)
+	}
+
+	// el navegador mobile puede colapsar la barra de direcciones después de
+	// que esta escena ya se creó — sin esto, el header y el ícono de pausa
+	// quedan posicionados con el scale.width/height viejo
+	private handleResize()
+	{
+		const width = this.scale.width
+		const height = this.scale.height
+		const headerHeight = height * HEADER_HEIGHT_RATIO
+
+		this.headerRect?.setPosition(width * 0.5, 0).setSize(width, headerHeight)
+
+		const offsetX = 10 * DPR
+		this.pauseIcon?.setX(width - offsetX)
 	}
 
 	private pauseGame()

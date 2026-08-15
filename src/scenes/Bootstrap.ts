@@ -76,9 +76,18 @@ export default class Bootstrap extends Phaser.Scene
 	private resize()
     {
 		const container = document.getElementById(ElementKeys.ContainerId)!
-        let w = container.clientWidth * window.devicePixelRatio
-        let h = container.clientHeight * window.devicePixelRatio
-		
-		this.scale.resize(w, h)
+        const w = container.clientWidth * window.devicePixelRatio
+        const h = container.clientHeight * window.devicePixelRatio
+
+		// scale.resize() por sí solo no alcanza: Phaser fija la relación de
+		// aspecto de displaySize una sola vez, al iniciar el juego, y no la
+		// vuelve a tocar (comentario explícito en su propio código fuente:
+		// "this is what sets the aspect ratio (which doesn't then change)").
+		// Sin actualizar esa relación de aspecto a mano, el modo FIT sigue
+		// letterboxeando contra el tamaño viejo — el canvas nunca crece para
+		// ocupar el contenedor nuevo, aunque éste ya haya cambiado de tamaño
+		this.scale.setGameSize(w, h)
+		this.scale.displaySize.setAspectRatio(w / h)
+		this.scale.refresh()
     }
 }

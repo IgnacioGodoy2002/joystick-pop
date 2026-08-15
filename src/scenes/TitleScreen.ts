@@ -24,6 +24,13 @@ export default class HelloWorldScene extends Phaser.Scene
 	private sfx?: SoundEffectsController
 	private uiClickSubject = new Subject<void>()
 
+	private bg?: Phaser.GameObjects.Graphics
+	private title1?: Phaser.GameObjects.Text
+	private titleSuffix?: Phaser.GameObjects.Text
+	private playBtn?: Phaser.GameObjects.DOMElement
+	private howToPlayBtn?: Phaser.GameObjects.DOMElement
+	private languageFlag?: Phaser.GameObjects.Image
+
 	init()
 	{
 		this.sfx = new SoundEffectsController(this.sound)
@@ -38,16 +45,16 @@ export default class HelloWorldScene extends Phaser.Scene
 		const x = width * 0.5
 		const y = height * 0.2
 
-		this.add.graphics()
+		this.bg = this.add.graphics()
 			.fillGradientStyle(0x241a3d, 0x241a3d, 0xa04870, 0xd97a5c, 1)
 			.fillRect(0, 0, width, height)
 			.setDepth(0)
 
 		this.createBackgroundParticles(width, height)
-		this.createLanguageSwitcher(width)
+		this.createLanguageSwitcher()
 
 		const fontSize = Math.min(width * 0.095, 225)
-        const title1 = this.add.text(x, y, i18next.t('titleScreen.title'), {
+        this.title1 = this.add.text(x, y, i18next.t('titleScreen.title'), {
 			fontFamily: 'Nosifer',
 			fontSize,
 			color: '#508cdc',
@@ -58,12 +65,12 @@ export default class HelloWorldScene extends Phaser.Scene
 		.setOrigin(0.5, 0.5)
 
 		const maxTitleWidth = width * 0.92
-		if (title1.width > maxTitleWidth)
+		if (this.title1.width > maxTitleWidth)
 		{
-			title1.setFontSize(fontSize * (maxTitleWidth / title1.width))
+			this.title1.setFontSize(fontSize * (maxTitleWidth / this.title1.width))
 		}
 
-		this.add.text(x, title1.y + title1.height, i18next.t('titleScreen.titleSuffix'), {
+		this.titleSuffix = this.add.text(x, this.title1.y + this.title1.height, i18next.t('titleScreen.titleSuffix'), {
 			fontFamily: 'Lemon',
 			fontSize: fontSize * 1.5,
 			color: '#FEC81A',
@@ -72,7 +79,7 @@ export default class HelloWorldScene extends Phaser.Scene
 		})
 		.setOrigin(0.5, 0.5)
 
-		const playBtn = this.add.dom(x, height * 0.6, playButton(i18next.t('titleScreen.play')))
+		this.playBtn = this.add.dom(x, height * 0.6, playButton(i18next.t('titleScreen.play')))
 			.addListener('click').on('click', () => {
 				this.uiClickSubject.next()
 
@@ -82,21 +89,61 @@ export default class HelloWorldScene extends Phaser.Scene
 				})
 			})
 
-		this.add.dom(x, playBtn.y + playBtn.height + 20, button(i18next.t('titleScreen.howToPlay')))
+		this.howToPlayBtn = this.add.dom(x, this.playBtn.y + this.playBtn.height + 20, button(i18next.t('titleScreen.howToPlay')))
 			.addListener('click').on('click', () => {
 				this.uiClickSubject.next()
 				this.scene.start(SceneKeys.HowToPlay)
 			})
 
+		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+
 		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+			this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this)
 			this.sfx?.destroy()
 		})
     }
 
-	private createLanguageSwitcher(width: number)
+	// el navegador mobile puede colapsar la barra de direcciones después de
+	// que esta escena ya se creó — sin esto, el fondo, el título y los
+	// botones quedan calculados contra el scale.width/height viejo
+	private handleResize()
 	{
+		const width = this.scale.width
 		const height = this.scale.height
+		const x = width * 0.5
+		const y = height * 0.2
 
+		this.bg?.clear()
+			.fillGradientStyle(0x241a3d, 0x241a3d, 0xa04870, 0xd97a5c, 1)
+			.fillRect(0, 0, width, height)
+
+		const fontSize = Math.min(width * 0.095, 225)
+		this.title1?.setPosition(x, y).setFontSize(fontSize)
+
+		const maxTitleWidth = width * 0.92
+		if (this.title1 && this.title1.width > maxTitleWidth)
+		{
+			this.title1.setFontSize(fontSize * (maxTitleWidth / this.title1.width))
+		}
+
+		if (this.title1 && this.titleSuffix)
+		{
+			this.titleSuffix.setPosition(x, this.title1.y + this.title1.height)
+				.setFontSize(fontSize * 1.5)
+		}
+
+		this.playBtn?.setPosition(x, height * 0.6)
+
+		if (this.playBtn && this.howToPlayBtn)
+		{
+			this.howToPlayBtn.setPosition(x, this.playBtn.y + this.playBtn.height + 20)
+		}
+
+		this.languageFlag?.setPosition(width - (16 * DPR), 16 * DPR)
+	}
+
+	private createLanguageSwitcher()
+	{
 		const offsetX = 16 * DPR
 		const offsetY = 16 * DPR
 		const optionSpacing = 50 * DPR
@@ -120,6 +167,12 @@ export default class HelloWorldScene extends Phaser.Scene
 		}
 
 		const openDropdown = () => {
+			// width/height leídos en el momento (no capturados por closure),
+			// para que el overlay cubra la pantalla real incluso si hubo un
+			// resize después de crear la escena
+			const width = this.scale.width
+			const height = this.scale.height
+
 			// overlay invisible que ocupa toda la pantalla: cualquier toque
 			// fuera de las opciones cae acá y cierra el desplegable sin elegir
 			const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0)
@@ -148,7 +201,7 @@ export default class HelloWorldScene extends Phaser.Scene
 			})
 		}
 
-		this.add.image(width - offsetX, offsetY, LANGUAGE_FLAG_TEXTURES[currentLanguage] ?? TextureKeys.FlagEs)
+		this.languageFlag = this.add.image(this.scale.width - offsetX, offsetY, LANGUAGE_FLAG_TEXTURES[currentLanguage] ?? TextureKeys.FlagEs)
 		.setOrigin(1, 0)
 		.setDisplaySize(48, 32)
 		.setDepth(4)
