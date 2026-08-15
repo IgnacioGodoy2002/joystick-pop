@@ -67,9 +67,9 @@ export default class Game extends Phaser.Scene
 		const height = this.scale.height
 
 		// mismos colores que TitleScreen.ts, para que el canvas sea
-		// continuación visual del fondo de página (violeta -> naranja/coral)
+		// continuación visual del fondo de página (navy oscuro -> coral)
 		this.add.graphics()
-			.fillGradientStyle(0x2d1b4e, 0x2d1b4e, 0x8e3b6e, 0xc25b3f, 1)
+			.fillGradientStyle(0x241a3d, 0x241a3d, 0xa04870, 0xd97a5c, 1)
 			.fillRect(0, 0, width, height)
 			.setDepth(0)
 
