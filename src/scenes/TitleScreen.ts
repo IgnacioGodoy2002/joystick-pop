@@ -46,7 +46,7 @@ export default class HelloWorldScene extends Phaser.Scene
 		const y = height * 0.2
 
 		this.bg = this.add.graphics()
-			.fillGradientStyle(0x241a3d, 0x241a3d, 0xa04870, 0xd97a5c, 1)
+			.fillGradientStyle(0x1a2a4d, 0x1a2a4d, 0x2d5a8a, 0x4fb3d9, 1)
 			.fillRect(0, 0, width, height)
 			.setDepth(0)
 
@@ -114,7 +114,7 @@ export default class HelloWorldScene extends Phaser.Scene
 		const y = height * 0.2
 
 		this.bg?.clear()
-			.fillGradientStyle(0x241a3d, 0x241a3d, 0xa04870, 0xd97a5c, 1)
+			.fillGradientStyle(0x1a2a4d, 0x1a2a4d, 0x2d5a8a, 0x4fb3d9, 1)
 			.fillRect(0, 0, width, height)
 
 		const fontSize = Math.min(width * 0.095, 225)
