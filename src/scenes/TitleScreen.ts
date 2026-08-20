@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 import playButton from '~/ui/PlayButton'
-import button from '~/ui/Buttons'
+import menuSecondaryButton from '~/ui/MenuSecondaryButton'
 import { DarkColor } from '~/consts/Colors'
 import SceneKeys from '~/consts/SceneKeys'
 import SoundEffectsController from '~/game/SoundEffectsController'
@@ -89,7 +89,7 @@ export default class HelloWorldScene extends Phaser.Scene
 				})
 			})
 
-		this.howToPlayBtn = this.add.dom(x, this.playBtn.y + this.playBtn.height + 20, button(i18next.t('titleScreen.howToPlay')))
+		this.howToPlayBtn = this.add.dom(x, this.playBtn.y + this.playBtn.height + 20, menuSecondaryButton(i18next.t('titleScreen.howToPlay')))
 			.addListener('click').on('click', () => {
 				this.uiClickSubject.next()
 				this.scene.start(SceneKeys.HowToPlay)

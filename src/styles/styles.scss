@@ -112,3 +112,49 @@ html, body {
 .game-button.is-primary {
 	background-color: #e8834a !important;
 }
+
+// botones del menú principal con volumen/brillo tipo botón de mando,
+// a tono con las burbujas decorativas del fondo (Jugar / Cómo jugar)
+.game-button.sphere-button {
+	position: relative;
+	overflow: hidden;
+	border-radius: 999px !important;
+	border: 3px solid #14202e !important;
+	background: linear-gradient(180deg, #6a5892 0%, #3b2c54 55%, #241a3d 100%) !important;
+	box-shadow:
+		0 5px 0 rgba(0, 0, 0, 0.35),
+		0 10px 16px rgba(0, 0, 0, 0.35),
+		inset 0 -10px 16px rgba(0, 0, 0, 0.35),
+		inset 0 6px 10px rgba(255, 255, 255, 0.3) !important;
+}
+
+.game-button.sphere-button.is-primary {
+	background: linear-gradient(180deg, #ffb27a 0%, #e8834a 55%, #c9622c 100%) !important;
+}
+
+.game-button.sphere-button::before {
+	content: '';
+	position: absolute;
+	top: 10%;
+	left: 16%;
+	width: 38%;
+	height: 30%;
+	background: rgba(255, 255, 255, 0.55);
+	border-radius: 50%;
+	filter: blur(4px);
+	pointer-events: none;
+}
+
+.game-button.sphere-button:hover,
+.game-button.sphere-button:focus,
+.game-button.sphere-button:active,
+.game-button.sphere-button.is-hovered,
+.game-button.sphere-button.is-focused,
+.game-button.sphere-button.is-active {
+	border-color: #14202e !important;
+	box-shadow:
+		0 5px 0 rgba(0, 0, 0, 0.35),
+		0 10px 16px rgba(0, 0, 0, 0.35),
+		inset 0 -10px 16px rgba(0, 0, 0, 0.35),
+		inset 0 6px 10px rgba(255, 255, 255, 0.3) !important;
+}
