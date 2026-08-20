@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 import playButton from '~/ui/PlayButton'
-import menuSecondaryButton from '~/ui/MenuSecondaryButton'
+import button from '~/ui/Buttons'
 import { DarkColor } from '~/consts/Colors'
 import SceneKeys from '~/consts/SceneKeys'
 import SoundEffectsController from '~/game/SoundEffectsController'
@@ -29,6 +29,7 @@ export default class HelloWorldScene extends Phaser.Scene
 	private titleSuffix?: Phaser.GameObjects.Text
 	private playBtn?: Phaser.GameObjects.DOMElement
 	private howToPlayBtn?: Phaser.GameObjects.DOMElement
+	private leaderboardBtn?: Phaser.GameObjects.DOMElement
 	private languageFlag?: Phaser.GameObjects.Image
 
 	init()
@@ -89,10 +90,16 @@ export default class HelloWorldScene extends Phaser.Scene
 				})
 			})
 
-		this.howToPlayBtn = this.add.dom(x, this.playBtn.y + this.playBtn.height + 20, menuSecondaryButton(i18next.t('titleScreen.howToPlay')))
+		this.howToPlayBtn = this.add.dom(x, this.playBtn.y + this.playBtn.height + 20, button(i18next.t('titleScreen.howToPlay')))
 			.addListener('click').on('click', () => {
 				this.uiClickSubject.next()
 				this.scene.start(SceneKeys.HowToPlay)
+			})
+
+		this.leaderboardBtn = this.add.dom(x, this.howToPlayBtn.y + this.howToPlayBtn.height + 20, button(i18next.t('titleScreen.leaderboard')))
+			.addListener('click').on('click', () => {
+				this.uiClickSubject.next()
+				this.scene.start(SceneKeys.Leaderboard)
 			})
 
 		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
@@ -137,6 +144,11 @@ export default class HelloWorldScene extends Phaser.Scene
 		if (this.playBtn && this.howToPlayBtn)
 		{
 			this.howToPlayBtn.setPosition(x, this.playBtn.y + this.playBtn.height + 20)
+		}
+
+		if (this.howToPlayBtn && this.leaderboardBtn)
+		{
+			this.leaderboardBtn.setPosition(x, this.howToPlayBtn.y + this.howToPlayBtn.height + 20)
 		}
 
 		this.languageFlag?.setPosition(width - (16 * DPR), 16 * DPR)

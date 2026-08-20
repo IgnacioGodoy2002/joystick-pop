@@ -3,21 +3,18 @@ import Phaser from 'phaser'
 import { DarkColor } from '~/consts/Colors'
 
 import button from '~/ui/Buttons'
+import leaderboardPanel from '~/ui/LeaderboardPanel'
+import fetchLeaderboard from '~/services/LeaderboardService'
 import SceneKeys from '~/consts/SceneKeys'
 import { i18next } from '~/i18n'
 
-const DPR = window.devicePixelRatio
-
-// fixed gap between the wrapped body text and the Back button, instead of
-// assuming the text always fits within a fixed fraction of the screen
-const BACK_BUTTON_MARGIN = 40 * DPR
-
-export default class HowToPlay extends Phaser.Scene
+export default class Leaderboard extends Phaser.Scene
 {
 	private bg?: Phaser.GameObjects.Graphics
 	private overlay?: Phaser.GameObjects.Rectangle
 	private title?: Phaser.GameObjects.Text
-	private body?: Phaser.GameObjects.Text
+	private loadingText?: Phaser.GameObjects.Text
+	private panel?: Phaser.GameObjects.DOMElement
 	private backBtn?: Phaser.GameObjects.DOMElement
 
 	create()
@@ -27,19 +24,16 @@ export default class HowToPlay extends Phaser.Scene
 		const x = width * 0.5
 		const y = height * 0.5
 
-		// mismo degradé que TitleScreen.ts/Game.ts, para que esta pantalla
-		// (llegada vía scene.start, sin nada detrás) sea consistente con el
-		// resto de la app en vez de quedar negra
+		// mismo degradé que TitleScreen.ts/Game.ts/HowToPlay.ts
 		this.bg = this.add.graphics()
 			.fillGradientStyle(0x1a2a4d, 0x1a2a4d, 0x2d5a8a, 0x4fb3d9, 1)
 			.fillRect(0, 0, width, height)
 			.setDepth(0)
 
-		// oscurece un poco para contraste del texto, sin tapar el degradé
 		this.overlay = this.add.rectangle(x, y, width, height, DarkColor, 0.25)
 
 		const fontSize = Math.min(width * 0.13, 180)
-		this.title = this.add.text(x, height * 0.3, i18next.t('howToPlay.title'), {
+		this.title = this.add.text(x, height * 0.14, i18next.t('leaderboard.title'), {
 			fontFamily: 'Nosifer',
 			fontSize,
 			color: '#508cdc',
@@ -56,20 +50,15 @@ export default class HowToPlay extends Phaser.Scene
 			this.title.setFontSize(fontSize * (maxTitleWidth / this.title.width))
 		}
 
-		this.body = this.add.text(x, height * 0.48, i18next.t('howToPlay.body'), {
+		this.loadingText = this.add.text(x, height * 0.5, i18next.t('leaderboard.loading'), {
 			fontFamily: 'Righteous',
 			fontSize: Math.min(width * 0.05, 32),
 			color: '#ffffff',
-			align: 'center',
-			wordWrap: {
-				width: width * 0.8
-			}
+			align: 'center'
 		})
 		.setOrigin(0.5, 0.5)
 
-		const backBtnY = this.body.y + (this.body.height * 0.5) + BACK_BUTTON_MARGIN
-
-		this.backBtn = this.add.dom(x, backBtnY, button(i18next.t('common.back')))
+		this.backBtn = this.add.dom(x, height * 0.92, button(i18next.t('common.back')))
 			.setScale(0, 0)
 			.addListener('click').on('click', () => {
 				this.scene.start(SceneKeys.TitleScreen)
@@ -93,6 +82,29 @@ export default class HowToPlay extends Phaser.Scene
 
 		timeline.play()
 
+		// firma preparada para el fetch real (ver LeaderboardService.ts) —
+		// hoy resuelve con datos mock, mañana solo cambia adentro del service
+		fetchLeaderboard().then(entries => {
+			if (!this.loadingText)
+			{
+				// la escena ya se destruyó antes de que resolviera el fetch
+				return
+			}
+
+			this.loadingText.destroy()
+			this.loadingText = undefined
+
+			this.panel = this.add.dom(x, height * 0.52, leaderboardPanel(entries))
+				.setScale(0, 0)
+
+			this.tweens.add({
+				targets: this.panel,
+				scale: 1,
+				ease: 'Back.easeOut',
+				duration: 300
+			})
+		})
+
 		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
 
 		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -101,8 +113,8 @@ export default class HowToPlay extends Phaser.Scene
 	}
 
 	// el navegador mobile puede colapsar la barra de direcciones después de
-	// que esta escena ya se creó — sin esto, el overlay y el texto (con su
-	// wordWrap) quedan calculados contra el scale.width/height viejo
+	// que esta escena ya se creó — sin esto, todo queda calculado contra el
+	// scale.width/height viejo
 	private handleResize()
 	{
 		const width = this.scale.width
@@ -117,7 +129,7 @@ export default class HowToPlay extends Phaser.Scene
 		this.overlay?.setPosition(x, y).setSize(width, height)
 
 		const fontSize = Math.min(width * 0.13, 180)
-		this.title?.setPosition(x, height * 0.3).setFontSize(fontSize)
+		this.title?.setPosition(x, height * 0.14).setFontSize(fontSize)
 
 		const maxTitleWidth = width * 0.9
 		if (this.title && this.title.width > maxTitleWidth)
@@ -125,14 +137,9 @@ export default class HowToPlay extends Phaser.Scene
 			this.title.setFontSize(fontSize * (maxTitleWidth / this.title.width))
 		}
 
-		this.body?.setPosition(x, height * 0.48)
-			.setFontSize(Math.min(width * 0.05, 32))
-			.setWordWrapWidth(width * 0.8)
+		this.loadingText?.setPosition(x, height * 0.5)
+		this.panel?.setPosition(x, height * 0.52)
 
-		if (this.body && this.backBtn)
-		{
-			const backBtnY = this.body.y + (this.body.height * 0.5) + BACK_BUTTON_MARGIN
-			this.backBtn.setPosition(x, backBtnY)
-		}
+		this.backBtn?.setPosition(x, height * 0.92)
 	}
 }

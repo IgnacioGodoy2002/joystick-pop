@@ -3,11 +3,16 @@
 		"title": "Joystick",
 		"titleSuffix": "Pop!",
 		"play": "Play",
-		"howToPlay": "How to Play"
+		"howToPlay": "How to Play",
+		"leaderboard": "Leaderboard"
 	},
 	"howToPlay": {
 		"title": "How to Play",
 		"body": "Aim and shoot to match 3+ buttons of the same symbol.\nClear them before they reach the bottom!"
+	},
+	"leaderboard": {
+		"title": "Leaderboard",
+		"loading": "Loading..."
 	},
 	"pause": {
 		"title": "Paused",

@@ -3,11 +3,16 @@
 		"title": "Joystick",
 		"titleSuffix": "Pop!",
 		"play": "Jogar",
-		"howToPlay": "Como Jogar"
+		"howToPlay": "Como Jogar",
+		"leaderboard": "Ranking"
 	},
 	"howToPlay": {
 		"title": "Como Jogar",
 		"body": "Mire e atire para combinar 3 ou mais botões do mesmo símbolo.\nLimpe o tabuleiro antes que ele chegue ao fundo!"
+	},
+	"leaderboard": {
+		"title": "Ranking",
+		"loading": "Carregando..."
 	},
 	"pause": {
 		"title": "Pausado",

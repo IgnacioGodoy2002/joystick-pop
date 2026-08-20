@@ -1,6 +1,6 @@
 const button = (text: string) => {
 	return (
-		<button class="button is-large game-button">
+		<button class="button is-large game-button sphere-button">
 			{ text }
 		</button>
 	)
@@ -8,7 +8,7 @@ const button = (text: string) => {
 
 const primaryButton = (text: string) => {
 	return (
-		<button class="button is-primary is-large game-button">
+		<button class="button is-primary is-large game-button sphere-button">
 			{ text }
 		</button>
 	)
@@ -16,7 +16,7 @@ const primaryButton = (text: string) => {
 
 const successButton = (text: string) => {
 	return (
-		<button class="button is-success is-large game-button">
+		<button class="button is-success is-large game-button sphere-button">
 			{ text }
 		</button>
 	)
@@ -24,7 +24,7 @@ const successButton = (text: string) => {
 
 const infoButton = (text: string) => {
 	return (
-		<button class="button is-info is-large game-button">
+		<button class="button is-info is-large game-button sphere-button">
 			{ text }
 		</button>
 	)
@@ -32,7 +32,7 @@ const infoButton = (text: string) => {
 
 const warningButton = (text: string) => {
 	return (
-		<button class="button is-warning is-large game-button">
+		<button class="button is-warning is-large game-button sphere-button">
 			{ text }
 		</button>
 	)
@@ -40,7 +40,7 @@ const warningButton = (text: string) => {
 
 const dangerButton = (text: string) => {
 	return (
-		<button class="button is-danger is-large game-button">
+		<button class="button is-danger is-large game-button sphere-button">
 			{ text }
 		</button>
 	)

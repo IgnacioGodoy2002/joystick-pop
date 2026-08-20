@@ -8,6 +8,7 @@ import GameUI from './scenes/GameUI'
 import GameOver from './scenes/GameOver'
 import Pause from './scenes/Pause'
 import HowToPlay from './scenes/HowToPlay'
+import Leaderboard from './scenes/Leaderboard'
 
 import TipsInterstitial from './scenes/TipsInterstitial'
 
@@ -21,6 +22,7 @@ const registerScenes = (game: Phaser.Game) => {
 	scene.add(SceneKeys.GameOver, GameOver)
 	scene.add(SceneKeys.Pause, Pause)
 	scene.add(SceneKeys.HowToPlay, HowToPlay)
+	scene.add(SceneKeys.Leaderboard, Leaderboard)
 
 	scene.add(SceneKeys.TipsInterstitial, TipsInterstitial)
 }

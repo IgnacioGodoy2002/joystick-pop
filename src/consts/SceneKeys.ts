@@ -8,7 +8,8 @@ enum SceneKeys
 	GameOver = 'game-over',
 	TipsInterstitial = 'tip-interstitial',
 	Pause = 'pause',
-	HowToPlay = 'how-to-play'
+	HowToPlay = 'how-to-play',
+	Leaderboard = 'leaderboard'
 }
 
 export default SceneKeys

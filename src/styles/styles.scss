@@ -6,43 +6,99 @@ $base-min-width: 250;
 @media 
 (-webkit-min-device-pixel-ratio: 3), 
 (min-resolution: 288dpi)
-{ 
+{
     .button.is-large
 	{
 		min-width: #{$base-min-width * 3}px !important;
 		font-size: #{$base-font-size * 3.5}rem !important;
+	}
+	.leaderboard-panel
+	{
+		width: #{$base-min-width * 3 * 1.3}px !important;
+	}
+	.leaderboard-row
+	{
+		font-size: #{$base-font-size * 3.5 * 0.32}rem !important;
+	}
+	.leaderboard-rank
+	{
+		width: #{$base-font-size * 3.5 * 0.55}rem !important;
+		height: #{$base-font-size * 3.5 * 0.55}rem !important;
+		line-height: #{$base-font-size * 3.5 * 0.55}rem !important;
 	}
 }
 
 @media 
 (-webkit-min-device-pixel-ratio: 2), 
 (min-resolution: 192dpi)
-{ 
+{
     .button.is-large
 	{
 		min-width: #{$base-min-width * 2}px !important;
 		font-size: #{$base-font-size * 2.5}rem !important;
 	}
+	.leaderboard-panel
+	{
+		width: #{$base-min-width * 2 * 1.3}px !important;
+	}
+	.leaderboard-row
+	{
+		font-size: #{$base-font-size * 2.5 * 0.32}rem !important;
+	}
+	.leaderboard-rank
+	{
+		width: #{$base-font-size * 2.5 * 0.55}rem !important;
+		height: #{$base-font-size * 2.5 * 0.55}rem !important;
+		line-height: #{$base-font-size * 2.5 * 0.55}rem !important;
+	}
 }
 
 @media 
 (-webkit-min-device-pixel-ratio: 1.25), 
-(min-resolution: 120dpi){ 
+(min-resolution: 120dpi){
     .button.is-large
 	{
 		min-width: #{$base-min-width * 1.25}px !important;
 		font-size: #{$base-font-size * 1.5}rem !important;
+	}
+	.leaderboard-panel
+	{
+		width: #{$base-min-width * 1.25 * 1.3}px !important;
+	}
+	.leaderboard-row
+	{
+		font-size: #{$base-font-size * 1.5 * 0.32}rem !important;
+	}
+	.leaderboard-rank
+	{
+		width: #{$base-font-size * 1.5 * 0.55}rem !important;
+		height: #{$base-font-size * 1.5 * 0.55}rem !important;
+		line-height: #{$base-font-size * 1.5 * 0.55}rem !important;
 	}
 }
 
 /* 1.3 dpr */
 @media 
 (-webkit-min-device-pixel-ratio: 1.3), 
-(min-resolution: 124.8dpi){ 
+(min-resolution: 124.8dpi){
     .button.is-large
 	{
 		min-width: #{$base-min-width * 1.3}px !important;
 		font-size: #{$base-font-size * 2}rem !important;
+	}
+	.leaderboard-panel
+	{
+		width: #{$base-min-width * 1.3 * 1.3}px !important;
+	}
+	.leaderboard-row
+	{
+		font-size: #{$base-font-size * 2 * 0.32}rem !important;
+	}
+	.leaderboard-rank
+	{
+		width: #{$base-font-size * 2 * 0.55}rem !important;
+		height: #{$base-font-size * 2 * 0.55}rem !important;
+		line-height: #{$base-font-size * 2 * 0.55}rem !important;
 	}
 }
 
@@ -54,6 +110,20 @@ $base-min-width: 250;
 	{
 		min-width: #{$base-min-width * 1.5}px !important;
 		font-size: #{$base-font-size * 2.5}rem !important;
+	}
+	.leaderboard-panel
+	{
+		width: #{$base-min-width * 1.5 * 1.3}px !important;
+	}
+	.leaderboard-row
+	{
+		font-size: #{$base-font-size * 2.5 * 0.32}rem !important;
+	}
+	.leaderboard-rank
+	{
+		width: #{$base-font-size * 2.5 * 0.55}rem !important;
+		height: #{$base-font-size * 2.5 * 0.55}rem !important;
+		line-height: #{$base-font-size * 2.5 * 0.55}rem !important;
 	}
 }
 
@@ -110,7 +180,7 @@ html, body {
 }
 
 .game-button.is-primary {
-	background-color: #e8834a !important;
+	background-color: #21b8a0 !important;
 }
 
 // botones del menú principal con volumen/brillo tipo botón de mando,
@@ -129,7 +199,7 @@ html, body {
 }
 
 .game-button.sphere-button.is-primary {
-	background: linear-gradient(180deg, #ffb27a 0%, #e8834a 55%, #c9622c 100%) !important;
+	background: linear-gradient(180deg, #8ff7d6 0%, #21b8a0 55%, #0d7a6c 100%) !important;
 }
 
 .game-button.sphere-button::before {
@@ -157,4 +227,91 @@ html, body {
 		0 10px 16px rgba(0, 0, 0, 0.35),
 		inset 0 -10px 16px rgba(0, 0, 0, 0.35),
 		inset 0 6px 10px rgba(255, 255, 255, 0.3) !important;
+}
+
+// lista de posiciones del leaderboard — mismo tratamiento esférico/celeste
+// que el resto de la UI, cada fila como una "píldora" con volumen y brillo
+.leaderboard-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: #{$base-min-width * 1.3}px;
+	font-family: 'Fredoka', sans-serif;
+}
+
+.leaderboard-row {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 18px;
+	border-radius: 999px;
+	border: 2px solid #14202e;
+	background: linear-gradient(180deg, #3d5f8a 0%, #2d5a8a 55%, #1a2a4d 100%);
+	box-shadow:
+		0 3px 0 rgba(0, 0, 0, 0.3),
+		0 6px 10px rgba(0, 0, 0, 0.3),
+		inset 0 -6px 10px rgba(0, 0, 0, 0.3),
+		inset 0 4px 6px rgba(255, 255, 255, 0.25);
+	color: #ffffff;
+	font-size: 0.9rem;
+}
+
+.leaderboard-row::before {
+	content: '';
+	position: absolute;
+	top: 8%;
+	left: 10%;
+	width: 26%;
+	height: 35%;
+	background: rgba(255, 255, 255, 0.35);
+	border-radius: 50%;
+	filter: blur(3px);
+	pointer-events: none;
+}
+
+.leaderboard-rank {
+	position: relative;
+	z-index: 1;
+	flex: 0 0 auto;
+	width: 1.7rem;
+	height: 1.7rem;
+	line-height: 1.7rem;
+	text-align: center;
+	border-radius: 50%;
+	background: #14202e;
+	font-weight: bold;
+}
+
+.leaderboard-rank-gold {
+	background: #f2c14e;
+	color: #241a3d;
+}
+
+.leaderboard-rank-silver {
+	background: #c9d3dc;
+	color: #241a3d;
+}
+
+.leaderboard-rank-bronze {
+	background: #cd7f32;
+	color: #241a3d;
+}
+
+.leaderboard-alias {
+	position: relative;
+	z-index: 1;
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.leaderboard-score {
+	position: relative;
+	z-index: 1;
+	flex: 0 0 auto;
+	font-weight: bold;
+	color: #ffe08a;
 }
