@@ -26,6 +26,13 @@ $base-min-width: 250;
 		height: #{$base-font-size * 3.5 * 0.55}rem !important;
 		line-height: #{$base-font-size * 3.5 * 0.55}rem !important;
 	}
+	.language-chip
+	{
+		width: #{$base-font-size * 3.5 * 0.75}rem !important;
+		height: #{$base-font-size * 3.5 * 0.75}rem !important;
+		line-height: #{$base-font-size * 3.5 * 0.75}rem !important;
+		font-size: #{$base-font-size * 3.5 * 0.32}rem !important;
+	}
 }
 
 @media 
@@ -51,10 +58,17 @@ $base-min-width: 250;
 		height: #{$base-font-size * 2.5 * 0.55}rem !important;
 		line-height: #{$base-font-size * 2.5 * 0.55}rem !important;
 	}
+	.language-chip
+	{
+		width: #{$base-font-size * 2.5 * 0.75}rem !important;
+		height: #{$base-font-size * 2.5 * 0.75}rem !important;
+		line-height: #{$base-font-size * 2.5 * 0.75}rem !important;
+		font-size: #{$base-font-size * 2.5 * 0.32}rem !important;
+	}
 }
 
-@media 
-(-webkit-min-device-pixel-ratio: 1.25), 
+@media
+(-webkit-min-device-pixel-ratio: 1.25),
 (min-resolution: 120dpi){
     .button.is-large
 	{
@@ -74,6 +88,13 @@ $base-min-width: 250;
 		width: #{$base-font-size * 1.5 * 0.55}rem !important;
 		height: #{$base-font-size * 1.5 * 0.55}rem !important;
 		line-height: #{$base-font-size * 1.5 * 0.55}rem !important;
+	}
+	.language-chip
+	{
+		width: #{$base-font-size * 1.5 * 0.75}rem !important;
+		height: #{$base-font-size * 1.5 * 0.75}rem !important;
+		line-height: #{$base-font-size * 1.5 * 0.75}rem !important;
+		font-size: #{$base-font-size * 1.5 * 0.32}rem !important;
 	}
 }
 
@@ -100,6 +121,13 @@ $base-min-width: 250;
 		height: #{$base-font-size * 2 * 0.55}rem !important;
 		line-height: #{$base-font-size * 2 * 0.55}rem !important;
 	}
+	.language-chip
+	{
+		width: #{$base-font-size * 2 * 0.75}rem !important;
+		height: #{$base-font-size * 2 * 0.75}rem !important;
+		line-height: #{$base-font-size * 2 * 0.75}rem !important;
+		font-size: #{$base-font-size * 2 * 0.32}rem !important;
+	}
 }
 
 /* 1.5 dpr */
@@ -124,6 +152,13 @@ $base-min-width: 250;
 		width: #{$base-font-size * 2.5 * 0.55}rem !important;
 		height: #{$base-font-size * 2.5 * 0.55}rem !important;
 		line-height: #{$base-font-size * 2.5 * 0.55}rem !important;
+	}
+	.language-chip
+	{
+		width: #{$base-font-size * 2.5 * 0.75}rem !important;
+		height: #{$base-font-size * 2.5 * 0.75}rem !important;
+		line-height: #{$base-font-size * 2.5 * 0.75}rem !important;
+		font-size: #{$base-font-size * 2.5 * 0.32}rem !important;
 	}
 }
 
@@ -314,4 +349,81 @@ html, body {
 	flex: 0 0 auto;
 	font-weight: bold;
 	color: #ffe08a;
+}
+
+// chips de idioma (ES/EN/PT) — mismo tratamiento esférico que el resto de
+// la UI, un color distinto por idioma, con el activo destacado (brillo
+// completo + anillo blanco) y los inactivos apagados (grises/opacos)
+.language-chip-row {
+	// Phaser aplica style="display:block" inline a los DOMElement que crea
+	// (ver add.dom) — eso pisa un display:flex normal, así que necesita
+	// !important para ganarle al inline style, igual que .game-button
+	display: flex !important;
+	gap: 10px;
+}
+
+.language-chip {
+	position: relative;
+	overflow: hidden;
+	width: 2rem;
+	height: 2rem;
+	line-height: 2rem;
+	text-align: center;
+	border-radius: 50%;
+	font-family: 'Fredoka', sans-serif;
+	font-weight: bold;
+	font-size: 0.7rem;
+	color: #1c1016;
+	cursor: pointer;
+	border: 2px solid #14202e;
+	box-shadow:
+		0 3px 0 rgba(0, 0, 0, 0.3),
+		0 5px 8px rgba(0, 0, 0, 0.3),
+		inset 0 -5px 8px rgba(0, 0, 0, 0.3),
+		inset 0 3px 5px rgba(255, 255, 255, 0.3);
+	transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.language-chip::before {
+	content: '';
+	position: absolute;
+	top: 10%;
+	left: 18%;
+	width: 32%;
+	height: 28%;
+	background: rgba(255, 255, 255, 0.55);
+	border-radius: 50%;
+	filter: blur(2px);
+	pointer-events: none;
+}
+
+.language-chip-yellow {
+	background: linear-gradient(180deg, #ffe08a 0%, #f2b705 55%, #c98a00 100%);
+}
+
+.language-chip-green {
+	background: linear-gradient(180deg, #a8e88f 0%, #5cb85c 55%, #2e7d32 100%);
+}
+
+.language-chip-blue {
+	background: linear-gradient(180deg, #7de8ff 0%, #22c1e0 55%, #0e8fae 100%);
+}
+
+.language-chip-active {
+	border-color: #ffffff;
+	box-shadow:
+		0 0 0 3px rgba(255, 255, 255, 0.5),
+		0 3px 0 rgba(0, 0, 0, 0.3),
+		0 5px 8px rgba(0, 0, 0, 0.3),
+		inset 0 -5px 8px rgba(0, 0, 0, 0.3),
+		inset 0 3px 5px rgba(255, 255, 255, 0.3);
+}
+
+.language-chip-inactive {
+	opacity: 0.5;
+	filter: grayscale(40%) brightness(0.8);
+}
+
+.language-chip-inactive:hover {
+	opacity: 0.8;
 }

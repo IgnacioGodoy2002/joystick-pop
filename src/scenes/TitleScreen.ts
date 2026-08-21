@@ -2,22 +2,13 @@ import Phaser from 'phaser'
 
 import playButton from '~/ui/PlayButton'
 import button from '~/ui/Buttons'
+import languageChips from '~/ui/LanguageChips'
 import { DarkColor } from '~/consts/Colors'
 import SceneKeys from '~/consts/SceneKeys'
 import SoundEffectsController from '~/game/SoundEffectsController'
 import { Subject } from 'rxjs'
 import TextureKeys from '~/consts/TextureKeys'
 import { i18next, USER_LANGUAGE_STORAGE_KEY } from '~/i18n'
-
-const DPR = window.devicePixelRatio
-
-const AVAILABLE_LANGUAGES = ['es', 'en', 'pt']
-
-const LANGUAGE_FLAG_TEXTURES: Record<string, string> = {
-	es: TextureKeys.FlagEs,
-	en: TextureKeys.FlagEn,
-	pt: TextureKeys.FlagBr
-}
 
 export default class HelloWorldScene extends Phaser.Scene
 {
@@ -30,7 +21,7 @@ export default class HelloWorldScene extends Phaser.Scene
 	private playBtn?: Phaser.GameObjects.DOMElement
 	private howToPlayBtn?: Phaser.GameObjects.DOMElement
 	private leaderboardBtn?: Phaser.GameObjects.DOMElement
-	private languageFlag?: Phaser.GameObjects.Image
+	private languageChipsEl?: Phaser.GameObjects.DOMElement
 
 	init()
 	{
@@ -151,82 +142,35 @@ export default class HelloWorldScene extends Phaser.Scene
 			this.leaderboardBtn.setPosition(x, this.howToPlayBtn.y + this.howToPlayBtn.height + 20)
 		}
 
-		this.languageFlag?.setPosition(width - (16 * DPR), 16 * DPR)
+		this.languageChipsEl?.setPosition(x, height * 0.94)
 	}
 
 	private createLanguageSwitcher()
 	{
-		const offsetX = 16 * DPR
-		const offsetY = 16 * DPR
-		const optionSpacing = 50 * DPR
+		const width = this.scale.width
+		const height = this.scale.height
 
 		const currentLanguage = i18next.language.slice(0, 2).toLowerCase()
 
-		let dropdownItems: Phaser.GameObjects.GameObject[] = []
+		this.languageChipsEl = this.add.dom(width * 0.5, height * 0.94, languageChips(currentLanguage))
+			.addListener('click')
+			.on('click', (event: MouseEvent) => {
+				const target = event.target as HTMLElement
+				const chip = target.closest('[data-lang]') as HTMLElement | null
+				const lang = chip?.dataset.lang
 
-		const closeDropdown = () => {
-			dropdownItems.forEach(item => item.destroy())
-			dropdownItems = []
-		}
+				if (!lang || lang === currentLanguage)
+				{
+					return
+				}
 
-		const selectLanguage = (lang: string) => {
-			closeDropdown()
-
-			i18next.changeLanguage(lang).then(() => {
-				localStorage.setItem(USER_LANGUAGE_STORAGE_KEY, lang)
-				this.scene.restart()
-			})
-		}
-
-		const openDropdown = () => {
-			// width/height leídos en el momento (no capturados por closure),
-			// para que el overlay cubra la pantalla real incluso si hubo un
-			// resize después de crear la escena
-			const width = this.scale.width
-			const height = this.scale.height
-
-			// overlay invisible que ocupa toda la pantalla: cualquier toque
-			// fuera de las opciones cae acá y cierra el desplegable sin elegir
-			const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0)
-				.setOrigin(0, 0)
-				.setDepth(3)
-				.setInteractive()
-				.on(Phaser.Input.Events.POINTER_DOWN, () => {
-					closeDropdown()
+				// misma lógica de siempre: localStorage tiene prioridad sobre
+				// la detección automática (ver i18n/index.ts), sin cambios acá
+				i18next.changeLanguage(lang).then(() => {
+					localStorage.setItem(USER_LANGUAGE_STORAGE_KEY, lang)
+					this.scene.restart()
 				})
-
-			dropdownItems.push(overlay)
-
-			AVAILABLE_LANGUAGES.forEach((lang, index) => {
-				const optionY = offsetY + optionSpacing * (index + 1)
-
-				const option = this.add.image(width - offsetX, optionY, LANGUAGE_FLAG_TEXTURES[lang])
-				.setOrigin(1, 0)
-				.setDisplaySize(48, 32)
-				.setDepth(4)
-				.setInteractive({ useHandCursor: true })
-				.on(Phaser.Input.Events.POINTER_DOWN, () => {
-					selectLanguage(lang)
-				})
-
-				dropdownItems.push(option)
 			})
-		}
-
-		this.languageFlag = this.add.image(this.scale.width - offsetX, offsetY, LANGUAGE_FLAG_TEXTURES[currentLanguage] ?? TextureKeys.FlagEs)
-		.setOrigin(1, 0)
-		.setDisplaySize(48, 32)
-		.setDepth(4)
-		.setInteractive({ useHandCursor: true })
-		.on(Phaser.Input.Events.POINTER_DOWN, () => {
-			if (dropdownItems.length > 0)
-			{
-				closeDropdown()
-				return
-			}
-
-			openDropdown()
-		})
 	}
 
 	private createBackgroundParticles(width: number, height: number)
