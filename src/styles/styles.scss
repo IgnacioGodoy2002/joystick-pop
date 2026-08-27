@@ -28,10 +28,10 @@ $base-min-width: 250;
 	}
 	.language-chip
 	{
-		width: #{$base-font-size * 3.5 * 0.75}rem !important;
-		height: #{$base-font-size * 3.5 * 0.75}rem !important;
-		line-height: #{$base-font-size * 3.5 * 0.75}rem !important;
-		font-size: #{$base-font-size * 3.5 * 0.32}rem !important;
+		width: #{$base-font-size * 3.5 * 0.85}rem !important;
+		height: #{$base-font-size * 3.5 * 0.85}rem !important;
+		line-height: #{$base-font-size * 3.5 * 0.85}rem !important;
+		font-size: #{$base-font-size * 3.5 * 0.4}rem !important;
 	}
 }
 
@@ -60,10 +60,10 @@ $base-min-width: 250;
 	}
 	.language-chip
 	{
-		width: #{$base-font-size * 2.5 * 0.75}rem !important;
-		height: #{$base-font-size * 2.5 * 0.75}rem !important;
-		line-height: #{$base-font-size * 2.5 * 0.75}rem !important;
-		font-size: #{$base-font-size * 2.5 * 0.32}rem !important;
+		width: #{$base-font-size * 2.5 * 0.85}rem !important;
+		height: #{$base-font-size * 2.5 * 0.85}rem !important;
+		line-height: #{$base-font-size * 2.5 * 0.85}rem !important;
+		font-size: #{$base-font-size * 2.5 * 0.4}rem !important;
 	}
 }
 
@@ -91,10 +91,10 @@ $base-min-width: 250;
 	}
 	.language-chip
 	{
-		width: #{$base-font-size * 1.5 * 0.75}rem !important;
-		height: #{$base-font-size * 1.5 * 0.75}rem !important;
-		line-height: #{$base-font-size * 1.5 * 0.75}rem !important;
-		font-size: #{$base-font-size * 1.5 * 0.32}rem !important;
+		width: #{$base-font-size * 1.5 * 0.85}rem !important;
+		height: #{$base-font-size * 1.5 * 0.85}rem !important;
+		line-height: #{$base-font-size * 1.5 * 0.85}rem !important;
+		font-size: #{$base-font-size * 1.5 * 0.4}rem !important;
 	}
 }
 
@@ -123,10 +123,10 @@ $base-min-width: 250;
 	}
 	.language-chip
 	{
-		width: #{$base-font-size * 2 * 0.75}rem !important;
-		height: #{$base-font-size * 2 * 0.75}rem !important;
-		line-height: #{$base-font-size * 2 * 0.75}rem !important;
-		font-size: #{$base-font-size * 2 * 0.32}rem !important;
+		width: #{$base-font-size * 2 * 0.85}rem !important;
+		height: #{$base-font-size * 2 * 0.85}rem !important;
+		line-height: #{$base-font-size * 2 * 0.85}rem !important;
+		font-size: #{$base-font-size * 2 * 0.4}rem !important;
 	}
 }
 
@@ -155,10 +155,10 @@ $base-min-width: 250;
 	}
 	.language-chip
 	{
-		width: #{$base-font-size * 2.5 * 0.75}rem !important;
-		height: #{$base-font-size * 2.5 * 0.75}rem !important;
-		line-height: #{$base-font-size * 2.5 * 0.75}rem !important;
-		font-size: #{$base-font-size * 2.5 * 0.32}rem !important;
+		width: #{$base-font-size * 2.5 * 0.85}rem !important;
+		height: #{$base-font-size * 2.5 * 0.85}rem !important;
+		line-height: #{$base-font-size * 2.5 * 0.85}rem !important;
+		font-size: #{$base-font-size * 2.5 * 0.4}rem !important;
 	}
 }
 
@@ -365,14 +365,14 @@ html, body {
 .language-chip {
 	position: relative;
 	overflow: hidden;
-	width: 2rem;
-	height: 2rem;
-	line-height: 2rem;
+	width: 2.3rem;
+	height: 2.3rem;
+	line-height: 2.3rem;
 	text-align: center;
 	border-radius: 50%;
 	font-family: 'Fredoka', sans-serif;
 	font-weight: bold;
-	font-size: 0.7rem;
+	font-size: 0.85rem;
 	color: #1c1016;
 	cursor: pointer;
 	border: 2px solid #14202e;
