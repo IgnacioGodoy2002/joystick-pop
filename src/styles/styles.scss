@@ -427,3 +427,20 @@ html, body {
 .language-chip-inactive:hover {
 	opacity: 0.8;
 }
+
+// en mobile los chips quedaban chicos y muy pegados entre sí incluso
+// después del ajuste de tamaño por DPR — se agrandan un poco más y se
+// separan, sólo por debajo del breakpoint mobile (mismo 768px que usa
+// MOBILE_BREAKPOINT en Game.ts), sin tocar desktop
+@media (max-width: 768px) {
+	.language-chip-row {
+		gap: 16px !important;
+	}
+
+	.language-chip {
+		width: 2.8rem !important;
+		height: 2.8rem !important;
+		line-height: 2.8rem !important;
+		font-size: 1.05rem !important;
+	}
+}
