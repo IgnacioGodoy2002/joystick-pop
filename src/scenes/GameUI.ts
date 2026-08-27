@@ -103,7 +103,9 @@ export default class GameUI extends Phaser.Scene
 		this.headerRect?.setPosition(width * 0.5, 0).setSize(width, headerHeight)
 
 		const offsetX = 10 * DPR
-		this.pauseIcon?.setX(width - offsetX)
+		const offsetY = 10 * DPR
+		this.scoreText?.setPosition(offsetX, offsetY)
+		this.pauseIcon?.setPosition(width - offsetX, offsetY)
 	}
 
 	private pauseGame()

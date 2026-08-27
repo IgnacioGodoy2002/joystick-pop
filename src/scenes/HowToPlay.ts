@@ -56,7 +56,15 @@ export default class HowToPlay extends Phaser.Scene
 			this.title.setFontSize(fontSize * (maxTitleWidth / this.title.width))
 		}
 
-		this.body = this.add.text(x, height * 0.48, i18next.t('howToPlay.body'), {
+		// el body va anclado al borde inferior del título (origin.y = 0, en vez
+		// de un height*0.48 fijo) porque wordWrap puede partir el texto en más
+		// líneas de las esperadas según el ancho real de la pantalla — con una
+		// posición fija independiente de la del título, esas líneas de más
+		// terminaban superpuestas con el título en vez de simplemente empujar
+		// el resto del layout hacia abajo
+		const bodyGap = 24 * DPR
+		const bodyY = this.title.y + (this.title.height * 0.5) + bodyGap
+		this.body = this.add.text(x, bodyY, i18next.t('howToPlay.body'), {
 			fontFamily: 'Righteous',
 			fontSize: Math.min(width * 0.05, 32),
 			color: '#ffffff',
@@ -65,9 +73,9 @@ export default class HowToPlay extends Phaser.Scene
 				width: width * 0.8
 			}
 		})
-		.setOrigin(0.5, 0.5)
+		.setOrigin(0.5, 0)
 
-		const backBtnY = this.body.y + (this.body.height * 0.5) + BACK_BUTTON_MARGIN
+		const backBtnY = this.body.y + this.body.height + BACK_BUTTON_MARGIN
 
 		this.backBtn = this.add.dom(x, backBtnY, button(i18next.t('common.back')))
 			.setScale(0, 0)
@@ -125,13 +133,19 @@ export default class HowToPlay extends Phaser.Scene
 			this.title.setFontSize(fontSize * (maxTitleWidth / this.title.width))
 		}
 
-		this.body?.setPosition(x, height * 0.48)
-			.setFontSize(Math.min(width * 0.05, 32))
-			.setWordWrapWidth(width * 0.8)
+		if (this.title)
+		{
+			const bodyGap = 24 * DPR
+			const bodyY = this.title.y + (this.title.height * 0.5) + bodyGap
+
+			this.body?.setPosition(x, bodyY)
+				.setFontSize(Math.min(width * 0.05, 32))
+				.setWordWrapWidth(width * 0.8)
+		}
 
 		if (this.body && this.backBtn)
 		{
-			const backBtnY = this.body.y + (this.body.height * 0.5) + BACK_BUTTON_MARGIN
+			const backBtnY = this.body.y + this.body.height + BACK_BUTTON_MARGIN
 			this.backBtn.setPosition(x, backBtnY)
 		}
 	}
