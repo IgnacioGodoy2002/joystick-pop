@@ -1,6 +1,6 @@
 {
 	"name": "joystick-pop-sura",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "Joystick Pop - minijuego de botones para SURA",
 	"scripts": {
 		"start": "parcel src/index.html -p 8000",
