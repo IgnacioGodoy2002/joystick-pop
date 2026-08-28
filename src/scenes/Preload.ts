@@ -2,12 +2,13 @@ import Phaser from 'phaser'
 
 import TextureKeys from '~/consts/TextureKeys'
 import GameEvents from '~/consts/GameEvents'
+import AudioKeys from '~/consts/AudioKeys'
 
-// Audio desactivado: los .wav originales del template venían como punteros
-// de Git LFS rotos. En vez de reemplazarlos por audios falsos, se sacó por
-// completo la carga/reproducción de sonido (ver SoundEffectsController.ts).
-// Para reactivarlo: agregar los .wav reales en public/assets/game/{music,sfx}/
-// y volver a descomentar este bloque + los this.sound.play() comentados allá.
+// El resto del audio (AttachToGrid, ClearMatches, OrphanCleared, UIClick,
+// GameOverFoley) sigue desactivado: esos .wav originales del template
+// vienen como punteros de Git LFS rotos y todavía no se reemplazaron. Ver
+// SoundEffectsController.ts. MusicLoop y ShootBall sí tienen archivos reales
+// (.ogg) desde acá.
 
 export default class Preload extends Phaser.Scene
 {
@@ -24,6 +25,9 @@ export default class Preload extends Phaser.Scene
 		this.load.image(TextureKeys.FlagEs, 'assets/game/flag-es.png')
 		this.load.image(TextureKeys.FlagEn, 'assets/game/flag-en.png')
 		this.load.image(TextureKeys.FlagBr, 'assets/game/flag-br.png')
+
+		this.load.audio(AudioKeys.MusicLoop, 'assets/game/music.ogg')
+		this.load.audio(AudioKeys.ShootBall, 'assets/game/dispara.ogg')
 	}
 
 	create()
