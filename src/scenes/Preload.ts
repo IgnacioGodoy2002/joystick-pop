@@ -4,11 +4,11 @@ import TextureKeys from '~/consts/TextureKeys'
 import GameEvents from '~/consts/GameEvents'
 import AudioKeys from '~/consts/AudioKeys'
 
-// El resto del audio (AttachToGrid, ClearMatches, OrphanCleared, UIClick,
-// GameOverFoley) sigue desactivado: esos .wav originales del template
-// vienen como punteros de Git LFS rotos y todavía no se reemplazaron. Ver
-// SoundEffectsController.ts. MusicLoop y ShootBall sí tienen archivos reales
-// (.ogg) desde acá.
+// El resto del audio (AttachToGrid, ClearMatches, OrphanCleared, UIClick)
+// sigue desactivado: esos .wav originales del template vienen como
+// punteros de Git LFS rotos y todavía no se reemplazaron. Ver
+// SoundEffectsController.ts. MusicLoop, ShootBall y GameOverFoley sí
+// tienen archivos reales (.ogg) desde acá.
 
 export default class Preload extends Phaser.Scene
 {
@@ -28,6 +28,7 @@ export default class Preload extends Phaser.Scene
 
 		this.load.audio(AudioKeys.MusicLoop, 'assets/game/music.ogg')
 		this.load.audio(AudioKeys.ShootBall, 'assets/game/dispara.ogg')
+		this.load.audio(AudioKeys.GameOverFoley, 'assets/game/roto.ogg')
 	}
 
 	create()

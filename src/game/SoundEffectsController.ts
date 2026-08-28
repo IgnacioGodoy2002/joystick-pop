@@ -74,7 +74,9 @@ export default class SoundEffectsController
 	handleGameOverEnter(gameOverEnter: Observable<void>)
 	{
 		const sub = gameOverEnter.subscribe(() => {
-			// this.sound.play(AudioKeys.GameOverFoley) -- audio desactivado, ver nota al inicio del archivo
+			this.sound.play(AudioKeys.GameOverFoley, {
+				volume: 0.5
+			})
 		})
 
 		this.subscriptions.push(sub)
