@@ -6,6 +6,7 @@ import button from '~/ui/Buttons'
 import leaderboardPanel from '~/ui/LeaderboardPanel'
 import fetchLeaderboard from '~/services/LeaderboardService'
 import SceneKeys from '~/consts/SceneKeys'
+import SuraIntegrationService from '~/integration/sura/SuraIntegrationService'
 import { i18next } from '~/i18n'
 
 export default class Leaderboard extends Phaser.Scene
@@ -82,9 +83,12 @@ export default class Leaderboard extends Phaser.Scene
 
 		timeline.play()
 
-		// firma preparada para el fetch real (ver LeaderboardService.ts) —
-		// hoy resuelve con datos mock, mañana solo cambia adentro del service
-		fetchLeaderboard().then(entries => {
+		const suraService = this.registry.get('suraService') as SuraIntegrationService | undefined
+
+		fetchLeaderboard({
+			gameId: suraService?.getGameId(),
+			apiBaseUrl: suraService?.getApiBaseUrl()
+		}).then(entries => {
 			if (!this.loadingText)
 			{
 				// la escena ya se destruyó antes de que resolviera el fetch

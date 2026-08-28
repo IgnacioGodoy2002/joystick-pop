@@ -1,45 +1,37 @@
 /**
  * Detección standalone vs. embebido en SURA.
  *
- * Se considera "embebido" solo si se cumplen las DOS condiciones:
+ * Antes dependía de que la URL trajera `?parent_origin=...` además de estar
+ * en un iframe -- pero el host real nunca manda ese query param (lo agrega
+ * al token, no acá), así que esta detección nunca daba `true` embebido de
+ * verdad. Tampoco había forma de detectar la app nativa (WebView top-level,
+ * donde `window.parent === window` siempre).
  *
- *  1. El documento corre dentro de un iframe (`window.parent !== window`).
- *     Descarta abrir el juego directo en una pestaña.
- *  2. La URL trae el query param `parent_origin`. El host SURA lo agrega
- *     siempre al `launchUrl` (igual que el token, ver contrato §7: "el
- *     token viaja al juego por query param del launchUrl"). Sin este
- *     param no hay forma confiable de saber a qué origin responderle.
- *
- * Ninguna condición sola alcanza: un iframe de testing/local cumpliría (1)
- * sin (2), y pegar el query param en una pestaña suelta cumpliría (2) sin
- * (1). Exigir ambas evita falsos positivos en los dos sentidos.
+ * Ahora, según el contrato de integración (Sura, 28/08/2026): embebido es
+ * simplemente correr dentro de un iframe O dentro del WebView de la app
+ * nativa. El parentOrigin ya no se lee de acá -- lo captura SuraBridge del
+ * `event.origin` del primer INIT_GAME real (ver SuraBridge.ts). gameId y
+ * apiBaseUrl tampoco son constantes de build: llegan en el payload de
+ * INIT_GAME (ver SuraIntegrationService.handleInit).
  */
 
-const GAME_ID = 'joystick-pop'
+const GAME_SLUG = 'joystick-pop'
 const CONTRACT_VERSION = 1
 
 interface SuraRuntimeConfig
 {
 	isEmbedded: boolean
-	parentOrigin: string
-	gameId: string
-	version: 1
+	gameSlug: string
+	version: number
 }
 
-const isRunningInIframe = () => window.parent !== window
-
-const getQueryParam = (name: string) => new URLSearchParams(window.location.search).get(name)
-
 const getSuraConfig = (): SuraRuntimeConfig => {
-	const parentOrigin = getQueryParam('parent_origin')
-	const isEmbedded = isRunningInIframe() && !!parentOrigin
+	const nativeWebView = (window as unknown as { ReactNativeWebView?: unknown }).ReactNativeWebView
+	const isEmbedded = window.parent !== window || Boolean(nativeWebView)
 
 	return {
 		isEmbedded,
-		// En modo standalone no se manda ningún postMessage, así que este
-		// valor nunca se usa como targetOrigin real — es solo un placeholder.
-		parentOrigin: isEmbedded ? (parentOrigin as string) : 'standalone',
-		gameId: GAME_ID,
+		gameSlug: GAME_SLUG,
 		version: CONTRACT_VERSION
 	}
 }

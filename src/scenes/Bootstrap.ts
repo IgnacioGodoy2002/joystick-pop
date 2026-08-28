@@ -77,7 +77,10 @@ export default class Bootstrap extends Phaser.Scene
 			return
 		}
 
-		const suraService = new SuraIntegrationService(suraConfig)
+		const suraService = new SuraIntegrationService({
+			gameSlug: suraConfig.gameSlug,
+			version: suraConfig.version
+		})
 		suraService.start()
 
 		this.registry.set('suraService', suraService)
