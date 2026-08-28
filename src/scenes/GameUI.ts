@@ -4,6 +4,7 @@ import { DarkColor } from '~/consts/Colors'
 import SceneKeys from '~/consts/SceneKeys'
 import { Observable, SubscriptionLike } from 'rxjs'
 import SuraIntegrationService from '~/integration/sura/SuraIntegrationService'
+import MusicController from '~/game/MusicController'
 import { i18next } from '~/i18n'
 
 const DPR = window.devicePixelRatio
@@ -29,6 +30,7 @@ export default class GameUI extends Phaser.Scene
 	private scoreText?: Phaser.GameObjects.Text
 	private headerRect?: Phaser.GameObjects.Rectangle
 	private pauseIcon?: Phaser.GameObjects.Text
+	private musicIcon?: Phaser.GameObjects.Text
 
 	private subscriptions: SubscriptionLike[] = []
 
@@ -64,6 +66,21 @@ export default class GameUI extends Phaser.Scene
 		.setInteractive({ useHandCursor: true })
 		.on(Phaser.Input.Events.POINTER_DOWN, () => {
 			this.pauseGame()
+		})
+
+		// A la izquierda del ícono de pausa. Muteá/activa solo la música
+		// (MusicController) -- nunca los efectos de sonido (disparo, game
+		// over), que quedan siempre audibles.
+		this.musicIcon = this.add.text(rx - this.pauseIcon.width - 10 * DPR, offsetY, this.musicIconText(), {
+			fontSize: 22 * DPR,
+			fontFamily: 'Righteous'
+		})
+		.setOrigin(1, 0)
+		.setPadding(10 * DPR, 10 * DPR, 10 * DPR, 10 * DPR)
+		.setInteractive({ useHandCursor: true })
+		.on(Phaser.Input.Events.POINTER_DOWN, () => {
+			MusicController.toggleMute()
+			this.musicIcon?.setText(this.musicIconText())
 		})
 
 		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
@@ -106,6 +123,16 @@ export default class GameUI extends Phaser.Scene
 		const offsetY = 10 * DPR
 		this.scoreText?.setPosition(offsetX, offsetY)
 		this.pauseIcon?.setPosition(width - offsetX, offsetY)
+
+		if (this.pauseIcon && this.musicIcon)
+		{
+			this.musicIcon.setPosition(width - offsetX - this.pauseIcon.width - 10 * DPR, offsetY)
+		}
+	}
+
+	private musicIconText()
+	{
+		return MusicController.isMuted() ? '♪ OFF' : '♪ ON'
 	}
 
 	private pauseGame()
