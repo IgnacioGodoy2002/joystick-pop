@@ -6,6 +6,7 @@ import languageChips from '~/ui/LanguageChips'
 import { DarkColor } from '~/consts/Colors'
 import SceneKeys from '~/consts/SceneKeys'
 import SoundEffectsController from '~/game/SoundEffectsController'
+import MusicController from '~/game/MusicController'
 import { Subject } from 'rxjs'
 import TextureKeys from '~/consts/TextureKeys'
 import { i18next, USER_LANGUAGE_STORAGE_KEY } from '~/i18n'
@@ -22,6 +23,7 @@ export default class HelloWorldScene extends Phaser.Scene
 	private howToPlayBtn?: Phaser.GameObjects.DOMElement
 	private leaderboardBtn?: Phaser.GameObjects.DOMElement
 	private languageChipsEl?: Phaser.GameObjects.DOMElement
+	private musicIcon?: Phaser.GameObjects.Text
 
 	init()
 	{
@@ -93,6 +95,22 @@ export default class HelloWorldScene extends Phaser.Scene
 				this.scene.start(SceneKeys.Leaderboard)
 			})
 
+		// Esquina superior derecha. Muteá/activa solo la música
+		// (MusicController) -- los efectos de sonido (disparo, game over)
+		// quedan siempre audibles, no se tocan acá.
+		const dpr = window.devicePixelRatio
+		this.musicIcon = this.add.text(width - 10 * dpr, 10 * dpr, this.musicIconText(), {
+			fontFamily: 'Righteous',
+			fontSize: 22 * dpr
+		})
+		.setOrigin(1, 0)
+		.setPadding(10 * dpr, 10 * dpr, 10 * dpr, 10 * dpr)
+		.setInteractive({ useHandCursor: true })
+		.on(Phaser.Input.Events.POINTER_DOWN, () => {
+			MusicController.toggleMute()
+			this.musicIcon?.setText(this.musicIconText())
+		})
+
 		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
 
 		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -143,6 +161,13 @@ export default class HelloWorldScene extends Phaser.Scene
 		}
 
 		this.languageChipsEl?.setPosition(x, height * 0.94)
+
+		this.musicIcon?.setPosition(width - 10 * window.devicePixelRatio, 10 * window.devicePixelRatio)
+	}
+
+	private musicIconText()
+	{
+		return MusicController.isMuted() ? '♪ OFF' : '♪ ON'
 	}
 
 	private createLanguageSwitcher()
