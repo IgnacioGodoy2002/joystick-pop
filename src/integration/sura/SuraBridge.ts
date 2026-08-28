@@ -1,14 +1,16 @@
-import { SURA_MSG, SuraEnvelope, SuraMsgType } from './SuraTypes'
+import { SURA_MSG, SuraEnvelope, SuraMsgType, GameCompletePayload } from './SuraTypes'
 
 /**
- * Transporte postMessage del contrato canónico SURA.
- * Ver MINIGAME_INTEGRATION_CONTRACT.md, sección 3 ("Reglas de transporte").
+ * Transporte postMessage del contrato real de integración SURA (ver
+ * SuraTypes.ts). Ya no recibe un parentOrigin fijo por config -- lo captura
+ * del `event.origin` del primer INIT_GAME válido, porque no hay forma de
+ * conocerlo de antemano (no llega por query param ni por env var de build;
+ * en la app nativa ni siquiera existe un origin real).
  */
 
 type SuraMessageHandler<T = Record<string, unknown>> = (payload: T) => void
 
-const SURA_MSG_VALUES: readonly string[] = Object.keys(SURA_MSG)
-	.map(key => SURA_MSG[key as keyof typeof SURA_MSG])
+const INBOUND_TYPES: readonly SuraMsgType[] = [SURA_MSG.INIT, SURA_MSG.PAUSE, SURA_MSG.RESUME]
 
 const isSuraEnvelope = (data: unknown): data is SuraEnvelope => {
 	if (typeof data !== 'object' || data === null)
@@ -18,21 +20,24 @@ const isSuraEnvelope = (data: unknown): data is SuraEnvelope => {
 
 	const candidate = data as Record<string, unknown>
 
-	return candidate.source === 'sura-minigames'
-		&& candidate.version === 1
-		&& typeof candidate.type === 'string'
-		&& SURA_MSG_VALUES.includes(candidate.type)
+	return typeof candidate.type === 'string'
+		&& (INBOUND_TYPES as readonly string[]).includes(candidate.type)
 		&& typeof candidate.payload === 'object'
 		&& candidate.payload !== null
 }
 
 export default class SuraBridge
 {
-	private parentOrigin: string
+	// Null hasta que llega el primer INIT_GAME válido -- ver handleMessage().
+	private parentOrigin: string | null = null
+
 	private listeners = new Map<SuraMsgType, Set<SuraMessageHandler>>()
 
 	private handleMessage = (event: MessageEvent) => {
-		if (event.origin !== this.parentOrigin || event.source !== window.parent)
+		// Un MessageEvent construido a mano (el bridge inyectado en el WebView
+		// nativo de la app) tiene source === null -- se acepta. Cualquier otra
+		// cosa que no sea la ventana padre real, se descarta.
+		if (event.source !== null && event.source !== window.parent)
 		{
 			return
 		}
@@ -43,6 +48,27 @@ export default class SuraBridge
 		}
 
 		const envelope = event.data
+
+		if (envelope.type === SURA_MSG.INIT)
+		{
+			// El primer INIT_GAME válido define a quién le contestamos de acá
+			// en más. event.origin puede venir vacío en algunas entregas
+			// sintéticas/nativas -- '*' es el fallback seguro en vez de
+			// quedar fijado a un string vacío que ningún postMessage real
+			// va a volver a matchear.
+			if (this.parentOrigin === null)
+			{
+				this.parentOrigin = event.origin || '*'
+			}
+		}
+		else if (this.parentOrigin !== null && event.origin !== this.parentOrigin)
+		{
+			// Una vez que conocemos al host real, se rechaza cualquier otro
+			// origen que diga serlo. No aplica antes de conocerlo -- ahí no
+			// hay nada sensible que proteger todavía.
+			return
+		}
+
 		const handlers = this.listeners.get(envelope.type)
 
 		if (!handlers)
@@ -53,10 +79,8 @@ export default class SuraBridge
 		handlers.forEach(handler => handler(envelope.payload))
 	}
 
-	constructor(parentOrigin: string)
+	constructor()
 	{
-		this.parentOrigin = parentOrigin
-
 		window.addEventListener('message', this.handleMessage)
 	}
 
@@ -74,16 +98,49 @@ export default class SuraBridge
 		}
 	}
 
-	send(type: SuraMsgType, payload: Record<string, unknown> = {})
+	/**
+	 * MINIGAME_READY -- el mensaje que abre el handshake, así que sale antes
+	 * de conocer el origin del host. No lleva nada sensible (game_id,
+	 * version), así que apunta siempre a '*'.
+	 */
+	sendReady(payload: Record<string, unknown>)
 	{
 		const envelope: SuraEnvelope = {
-			source: 'sura-minigames',
-			version: 1,
+			type: SURA_MSG.READY,
+			payload
+		}
+
+		window.parent.postMessage(envelope, '*')
+	}
+
+	/** Resto de mensajes enveloped (SESSION_ACCEPTED, STARTED, ERROR, EXIT_REQUESTED). */
+	send(type: SuraMsgType, payload: Record<string, unknown> = {})
+	{
+		if (!this.parentOrigin)
+		{
+			return
+		}
+
+		const envelope: SuraEnvelope = {
 			type,
 			payload
 		}
 
 		window.parent.postMessage(envelope, this.parentOrigin)
+	}
+
+	/**
+	 * GAME_COMPLETE -- a diferencia del resto, va PLANO (sin envelope): el
+	 * host lo descarta en silencio si llega anidado bajo `payload`.
+	 */
+	sendCompletion(data: GameCompletePayload)
+	{
+		if (!this.parentOrigin)
+		{
+			return
+		}
+
+		window.parent.postMessage({ type: SURA_MSG.COMPLETED, ...data }, this.parentOrigin)
 	}
 
 	destroy()

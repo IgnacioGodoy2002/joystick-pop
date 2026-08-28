@@ -53,10 +53,12 @@ export default class Game extends Phaser.Scene
 	private sfx?: SoundEffectsController
 
 	private state = GameState.Playing
+	private startedAt = 0
 
 	init()
 	{
 		this.state = GameState.Playing
+		this.startedAt = 0
 
 		this.sfx = new SoundEffectsController(this.sound)
 	}
@@ -145,6 +147,8 @@ export default class Game extends Phaser.Scene
 		})
 		this.scene.bringToTop(SceneKeys.GameUI)
 
+		this.startedAt = this.time.now
+
 		const suraService = this.registry.get('suraService') as SuraIntegrationService | undefined
 		suraService?.notifyStarted()
 
@@ -167,8 +171,10 @@ export default class Game extends Phaser.Scene
 			localStorage.setItem(STORAGE_KEY_RECORD, String(score))
 		}
 
+		const durationMs = this.startedAt > 0 ? Math.round(this.time.now - this.startedAt) : undefined
+
 		const suraService = this.registry.get('suraService') as SuraIntegrationService | undefined
-		suraService?.notifyCompleted(score, { isNewRecord })
+		suraService?.notifyCompleted(score, durationMs)
 
 		this.scene.stop(SceneKeys.Pause)
 

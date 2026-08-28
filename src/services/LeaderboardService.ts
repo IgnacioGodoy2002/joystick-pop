@@ -5,6 +5,26 @@ interface LeaderboardEntry
 	score: number
 }
 
+interface LeaderboardFetchParams
+{
+	gameId?: string | null
+	apiBaseUrl?: string | null
+}
+
+interface ApiLeaderboardEntry
+{
+	position: number
+	alias: string | null
+	best_score: number
+}
+
+interface ApiLeaderboardResponse
+{
+	data: {
+		entries: ApiLeaderboardEntry[]
+	}
+}
+
 const MOCK_LEADERBOARD: LeaderboardEntry[] = [
 	{ rank: 1, alias: 'BubblePopper99', score: 15420 },
 	{ rank: 2, alias: 'JoyStickJoe', score: 14890 },
@@ -18,14 +38,46 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
 	{ rank: 10, alias: 'LuckyPop', score: 7650 }
 ]
 
-// TODO: reemplazar por el fetch real al endpoint del backend cuando esté
-// disponible (ej. fetch('/api/leaderboard').then(r => r.json())) — la firma
-// (Promise<LeaderboardEntry[]>) ya queda lista para eso, así el resto de la
-// UI (Leaderboard.ts / LeaderboardPanel.tsx) no necesita cambios
-const fetchLeaderboard = (): Promise<LeaderboardEntry[]> => {
-	return Promise.resolve(MOCK_LEADERBOARD)
+/**
+ * Leaderboard real de la partida, vía el endpoint público (sin auth) de
+ * Sura: GET {apiBaseUrl}/minigames/v1/games/{gameId}/leaderboard.
+ *
+ * gameId y apiBaseUrl vienen del payload de INIT_GAME (ver
+ * SuraIntegrationService.getGameId/getApiBaseUrl) -- Leaderboard.ts los lee
+ * del registry y los pasa acá. Sin sesión SURA (standalone, o antes de que
+ * el handshake termine) cae al listado mock de siempre.
+ */
+const fetchLeaderboard = async (params?: LeaderboardFetchParams): Promise<LeaderboardEntry[]> => {
+	if (!params?.gameId || !params?.apiBaseUrl)
+	{
+		return MOCK_LEADERBOARD
+	}
+
+	try
+	{
+		const response = await fetch(`${params.apiBaseUrl}/minigames/v1/games/${params.gameId}/leaderboard?per_page=12`)
+
+		if (!response.ok)
+		{
+			return MOCK_LEADERBOARD
+		}
+
+		const body = await response.json() as ApiLeaderboardResponse
+
+		return body.data.entries.map(entry => ({
+			rank: entry.position,
+			// El backend puede mandar alias null (jugador sin nickname) --
+			// placeholder genérico, nunca un nombre inventado.
+			alias: entry.alias ?? `Player ${entry.position}`,
+			score: entry.best_score
+		}))
+	}
+	catch
+	{
+		return MOCK_LEADERBOARD
+	}
 }
 
 export default fetchLeaderboard
 
-export type { LeaderboardEntry }
+export type { LeaderboardEntry, LeaderboardFetchParams }

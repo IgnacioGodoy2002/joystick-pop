@@ -1,11 +1,14 @@
 /**
- * Envelope y catálogo de mensajes del contrato canónico de integración SURA.
- * Ver MINIGAME_INTEGRATION_CONTRACT.md, secciones 3 y 4.
+ * Envelope y catálogo de mensajes del contrato REAL de integración SURA
+ * (doc de Fede, 28/08/2026) -- confirmado bajando el bundle que sirve el
+ * CDN de Sura. Reemplaza el contrato provisional anterior
+ * (SURA_MINIGAME_INIT/MINIGAME_COMPLETED envueltos, snake_case, player_id
+ * obligatorio), que nunca coincidió con lo que el host realmente manda.
  */
 
 const SURA_MSG = {
 	// Host -> Game
-	INIT: 'SURA_MINIGAME_INIT',
+	INIT: 'INIT_GAME',
 	PAUSE: 'SURA_MINIGAME_PAUSE',
 	RESUME: 'SURA_MINIGAME_RESUME',
 
@@ -13,16 +16,16 @@ const SURA_MSG = {
 	READY: 'MINIGAME_READY',
 	SESSION_ACCEPTED: 'MINIGAME_SESSION_ACCEPTED',
 	STARTED: 'MINIGAME_STARTED',
-	COMPLETED: 'MINIGAME_COMPLETED',
+	COMPLETED: 'GAME_COMPLETE',
 	ERROR: 'MINIGAME_ERROR',
 	EXIT_REQUESTED: 'MINIGAME_EXIT_REQUESTED'
 } as const
 
 type SuraMsgType = typeof SURA_MSG[keyof typeof SURA_MSG]
 
+// Solo los mensajes Host -> Game usan este sobre { type, payload }. El
+// GAME_COMPLETE que manda el juego es plano (ver SuraBridge.sendCompletion).
 type SuraEnvelope = {
-	source: 'sura-minigames'
-	version: 1
 	type: SuraMsgType
 	payload: Record<string, unknown>
 }
@@ -32,10 +35,16 @@ type SuraEnvelope = {
 interface SuraMinigameInitPayload
 {
 	token: string
-	session_id: string
-	player_id: string
-	game_id: string
-	nickname?: string
+	sessionId: string
+	username?: string
+	referral?: string
+	referredByNickname?: string
+	// Nuevos -- UUID real del minijuego y base de la API, para que un solo
+	// build sirva en cualquier entorno sin hardcodear nada. Opcionales en el
+	// tipo por si un host viejo todavía no los manda: el leaderboard
+	// simplemente cae al listado local en ese caso (ver LeaderboardService.ts).
+	gameId?: string
+	apiBaseUrl?: string
 }
 
 type SuraMinigamePausePayload = Record<string, never>
@@ -62,12 +71,13 @@ interface MinigameStartedPayload
 	game_id: string
 }
 
-interface MinigameCompletedPayload
+// GAME_COMPLETE es plano -- no va bajo `payload`, se manda tal cual junto a `type`.
+interface GameCompletePayload
 {
-	session_id: string
-	game_id: string
+	sessionId: string
 	score: number
-	stats?: Record<string, unknown>
+	provider: string
+	duration_ms?: number
 }
 
 interface MinigameErrorPayload
@@ -90,7 +100,7 @@ export {
 	MinigameReadyPayload,
 	MinigameSessionAcceptedPayload,
 	MinigameStartedPayload,
-	MinigameCompletedPayload,
+	GameCompletePayload,
 	MinigameErrorPayload,
 	MinigameExitRequestedPayload
 }

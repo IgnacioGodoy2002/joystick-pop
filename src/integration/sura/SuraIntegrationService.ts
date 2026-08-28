@@ -6,7 +6,6 @@ import {
 
 /**
  * Máquina de estados del ciclo de vida de integración SURA.
- * Ver MINIGAME_INTEGRATION_CONTRACT.md, sección 5.
  */
 
 enum SuraIntegrationState
@@ -21,17 +20,16 @@ enum SuraIntegrationState
 
 interface SuraIntegrationConfig
 {
-	gameId: string
+	gameSlug: string
 	version: number
-	parentOrigin: string
 }
 
 interface SuraSession
 {
 	token: string
 	sessionId: string
-	playerId: string
 	gameId: string
+	apiBaseUrl: string
 	nickname?: string
 }
 
@@ -40,7 +38,7 @@ type SuraLifecycleCallback = () => void
 export default class SuraIntegrationService
 {
 	private bridge: SuraBridge
-	private gameId: string
+	private gameSlug: string
 	private version: number
 
 	private state = SuraIntegrationState.Booting
@@ -54,11 +52,29 @@ export default class SuraIntegrationService
 		return this.state
 	}
 
+	/** Nombre a mostrar del jugador, tal como lo mandó el host -- null hasta el handshake. */
+	getNickname(): string | null
+	{
+		return this.session?.nickname ?? null
+	}
+
+	/** UUID real del minijuego en el backend de Sura -- null hasta el handshake. */
+	getGameId(): string | null
+	{
+		return this.session?.gameId || null
+	}
+
+	/** Base de la API de Sura, ya con /api incluido -- null hasta el handshake. */
+	getApiBaseUrl(): string | null
+	{
+		return this.session?.apiBaseUrl || null
+	}
+
 	constructor(config: SuraIntegrationConfig)
 	{
-		this.gameId = config.gameId
+		this.gameSlug = config.gameSlug
 		this.version = config.version
-		this.bridge = new SuraBridge(config.parentOrigin)
+		this.bridge = new SuraBridge()
 
 		this.bridge.on(SURA_MSG.INIT, payload => {
 			this.handleInit(payload as unknown as SuraMinigameInitPayload)
@@ -75,8 +91,8 @@ export default class SuraIntegrationService
 
 	start()
 	{
-		this.bridge.send(SURA_MSG.READY, {
-			game_id: this.gameId,
+		this.bridge.sendReady({
+			game_id: this.gameSlug,
 			version: this.version
 		})
 
@@ -88,10 +104,12 @@ export default class SuraIntegrationService
 	{
 		this.session = {
 			token: payload.token,
-			sessionId: payload.session_id,
-			playerId: payload.player_id,
-			gameId: payload.game_id,
-			nickname: payload.nickname
+			sessionId: payload.sessionId,
+			gameId: payload.gameId ?? '',
+			apiBaseUrl: payload.apiBaseUrl ?? '',
+			// Puede llegar vacío (jugador sin nickname) -- quien lo consuma
+			// muestra un placeholder genérico, nunca un nombre inventado.
+			nickname: payload.username
 		}
 
 		this.bridge.send(SURA_MSG.SESSION_ACCEPTED, {
@@ -117,18 +135,25 @@ export default class SuraIntegrationService
 		this.state = SuraIntegrationState.Started
 	}
 
-	notifyCompleted(score: number, stats?: Record<string, unknown>)
+	/**
+	 * durationMs es opcional pero conviene mandarlo siempre que se tenga: el
+	 * servidor toma min(tiempo medido por el server, duration_ms), así que
+	 * reportarlo honesto solo puede bajar el techo de anti-cheat, nunca
+	 * subirlo -- juzga la partida contra su duración real, no contra cuánto
+	 * estuvo la pantalla abierta.
+	 */
+	notifyCompleted(score: number, durationMs?: number)
 	{
 		if (!this.session)
 		{
 			return
 		}
 
-		this.bridge.send(SURA_MSG.COMPLETED, {
-			session_id: this.session.sessionId,
-			game_id: this.session.gameId,
+		this.bridge.sendCompletion({
+			sessionId: this.session.sessionId,
 			score,
-			stats
+			provider: 'tingz',
+			duration_ms: durationMs
 		})
 
 		this.state = SuraIntegrationState.Completed
