@@ -23,9 +23,9 @@ export default class SoundEffectsController
 	handleShootBall(onShoot: Observable<IBall>)
 	{
 		const sub = onShoot.subscribe(ball => {
-			// this.sound.play(AudioKeys.ShootBall, {
-		// volume: 0.3
-		// })
+			this.sound.play(AudioKeys.ShootBall, {
+				volume: 0.3
+			})
 		})
 
 		this.subscriptions.push(sub)

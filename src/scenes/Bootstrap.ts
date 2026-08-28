@@ -5,6 +5,7 @@ import GameEvents from '~/consts/GameEvents'
 import ElementKeys from '~/consts/ElementKeys'
 
 import WebFontFile from '~/ui/WebFontFile'
+import AudioKeys from '~/consts/AudioKeys'
 
 import getSuraConfig from '~/integration/sura/SuraRuntimeConfig'
 import SuraIntegrationService from '~/integration/sura/SuraIntegrationService'
@@ -55,7 +56,24 @@ export default class Bootstrap extends Phaser.Scene
 		this.scene.stop(SceneKeys.Preload)
 		console.log('preload finished')
 
+		this.startMusic()
 		this.scene.start(SceneKeys.TitleScreen)
+	}
+
+	// Arranca acá (una sola vez por carga de página, no por escena) porque
+	// this.sound es el SoundManager global del juego, no uno por escena — un
+	// sonido que empieza en Bootstrap sigue sonando sin cortes al pasar a
+	// TitleScreen, Game, etc. handlePreloadFinished está enganchado con
+	// `.once(...)` (ver preload()), así que esto corre una sola vez por
+	// carga de página real — no hace falta guardia contra duplicados
+	// (BaseSoundManager en esta versión de Phaser no expone un `.get(key)`
+	// para chequear instancias existentes).
+	private startMusic()
+	{
+		this.sound.play(AudioKeys.MusicLoop, {
+			loop: true,
+			volume: 0.4
+		})
 	}
 
 	private initSuraIntegration()
