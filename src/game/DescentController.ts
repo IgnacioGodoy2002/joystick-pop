@@ -27,7 +27,7 @@ export default class DescentController
 		return this.ballGrid.bottom
 	}
 
-	constructor(scene: Phaser.Scene, grid: BallGrid, growthModel: IGrowthModel, speed = 0.3)
+	constructor(scene: Phaser.Scene, grid: BallGrid, growthModel: IGrowthModel, speed = 0.22)
 	{
 		this.scene = scene
 		this.ballGrid = grid
@@ -150,8 +150,12 @@ export default class DescentController
 
 	private handleBallPopulationChanged(count: number)
 	{
+		// mismo cálculo de siempre (piso, log de la población, techo) --
+		// solo se bajó el multiplicador final (0.85 -> 0.65, ~24% más lento
+		// en toda la curva) a pedido, para que la grilla no baje tan rápido
+		// durante la partida
 		const s = Math.max(0.3, Math.log(count * .0004))
 		const capped = s > 1.4 ? 1.4 : s
-		this.speed = capped * 0.85
+		this.speed = capped * 0.65
 	}
 }

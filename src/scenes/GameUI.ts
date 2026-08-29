@@ -132,7 +132,7 @@ export default class GameUI extends Phaser.Scene
 
 	private musicIconText()
 	{
-		return MusicController.isMuted() ? '♪ OFF' : '♪ ON'
+		return MusicController.isMuted() ? '🔇' : '🔊'
 	}
 
 	private pauseGame()
