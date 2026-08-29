@@ -12,9 +12,13 @@ export default class DescentController
 {
 	private scene: Phaser.Scene
 	private ballGrid: BallGrid
-	private growthModel: IGrowthModel
 
-	private speed: number
+	// Constante durante toda la partida a pedido -- antes escalaba con
+	// BallGrowthModel.population (que crece sola con el tiempo, sin
+	// importar si el jugador destruye bolas o no), así que el descenso se
+	// iba acelerando a medida que pasaba el tiempo. Ver handleBallsDestroyed
+	// más abajo para el único momento en que sí cambia el estado (reversing).
+	private readonly speed: number
 
 	private state = DescentState.Descending
 
@@ -31,7 +35,6 @@ export default class DescentController
 	{
 		this.scene = scene
 		this.ballGrid = grid
-		this.growthModel = growthModel
 
 		this.speed = speed
 
@@ -39,13 +42,8 @@ export default class DescentController
 			this.handleBallsDestroyed(count)
 		})
 
-		const pcs = this.growthModel.onPopulationChanged().subscribe(count => {
-			this.handleBallPopulationChanged(count)
-		})
-
 		this.subscriptions = [
-			bds,
-			pcs
+			bds
 		]
 	}
 
@@ -146,16 +144,5 @@ export default class DescentController
 			},
 			onCompleteScope: this
 		})
-	}
-
-	private handleBallPopulationChanged(count: number)
-	{
-		// mismo cálculo de siempre (piso, log de la población, techo) --
-		// solo se bajó el multiplicador final (0.85 -> 0.65, ~24% más lento
-		// en toda la curva) a pedido, para que la grilla no baje tan rápido
-		// durante la partida
-		const s = Math.max(0.3, Math.log(count * .0004))
-		const capped = s > 1.4 ? 1.4 : s
-		this.speed = capped * 0.65
 	}
 }
