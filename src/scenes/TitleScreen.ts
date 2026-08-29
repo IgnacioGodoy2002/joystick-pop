@@ -167,7 +167,7 @@ export default class HelloWorldScene extends Phaser.Scene
 
 	private musicIconText()
 	{
-		return MusicController.isMuted() ? '♪ OFF' : '♪ ON'
+		return MusicController.isMuted() ? '🔇' : '🔊'
 	}
 
 	private createLanguageSwitcher()
