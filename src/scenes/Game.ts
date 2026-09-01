@@ -12,7 +12,7 @@ import DescentController from '~/game/DescentController'
 import SceneKeys from '~/consts/SceneKeys'
 import ShotGuide from '~/game/guides/ShotGuide'
 import SoundEffectsController from '~/game/SoundEffectsController'
-import SuraIntegrationService from '~/integration/sura/SuraIntegrationService'
+import SuraIntegrationService, { STORAGE_KEY_RECORD } from '~/integration/sura/SuraIntegrationService'
 
 const DPR = window.devicePixelRatio
 
@@ -162,7 +162,6 @@ export default class Game extends Phaser.Scene
 	private handleGameOver()
 	{
 		const score: number = this.registry.get('score') || 0
-		const STORAGE_KEY_RECORD = 'bubbleBlastSuraRecord'
 		const record = Number(localStorage.getItem(STORAGE_KEY_RECORD) || 0)
 		const isNewRecord = score > record
 

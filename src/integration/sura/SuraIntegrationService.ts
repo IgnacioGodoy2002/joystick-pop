@@ -31,7 +31,12 @@ interface SuraSession
 	gameId: string
 	apiBaseUrl: string
 	nickname?: string
+	bestScore?: number
 }
+
+// Misma key que Game.ts:handleGameOver() lee/escribe -- exportada acá para
+// que ambos lados nunca queden desincronizados si el nombre cambia.
+export const STORAGE_KEY_RECORD = 'bubbleBlastSuraRecord'
 
 type SuraLifecycleCallback = () => void
 
@@ -109,7 +114,22 @@ export default class SuraIntegrationService
 			apiBaseUrl: payload.apiBaseUrl ?? '',
 			// Puede llegar vacío (jugador sin nickname) -- quien lo consuma
 			// muestra un placeholder genérico, nunca un nombre inventado.
-			nickname: payload.username
+			nickname: payload.username,
+			bestScore: payload.bestScore
+		}
+
+		// Reconcilia el récord local (por dispositivo) contra el mejor puntaje
+		// real de la cuenta. Solo lo sube, nunca lo baja -- un valor remoto
+		// ausente/viejo/en cero (host todavía no actualizado, o cuenta sin
+		// corridas todavía) no debe borrar una victoria local reciente que
+		// todavía no hizo el round-trip al backend.
+		if (this.session.bestScore !== undefined)
+		{
+			const localRecord = Number(localStorage.getItem(STORAGE_KEY_RECORD) || 0)
+			if (this.session.bestScore > localRecord)
+			{
+				localStorage.setItem(STORAGE_KEY_RECORD, String(this.session.bestScore))
+			}
 		}
 
 		this.bridge.send(SURA_MSG.SESSION_ACCEPTED, {
