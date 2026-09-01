@@ -45,6 +45,10 @@ interface SuraMinigameInitPayload
 	// simplemente cae al listado local en ese caso (ver LeaderboardService.ts).
 	gameId?: string
 	apiBaseUrl?: string
+	// El mejor puntaje real del jugador para este juego, calculado por
+	// sura-api -- no el localStorage del juego, que es por dispositivo y
+	// nunca se sincroniza con la cuenta.
+	bestScore?: number
 }
 
 type SuraMinigamePausePayload = Record<string, never>
