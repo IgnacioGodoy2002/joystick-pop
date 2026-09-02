@@ -1,12 +1,30 @@
 import Phaser from 'phaser'
-import WebFont from 'webfontloader'
+
+/**
+ * Antes dependía de webfont.js (Google, vía CDN externo) para cargar las
+ * fuentes -- si ese CDN no era alcanzable (ver commit del fix de la
+ * pantalla negra en el preview de Sura), el juego se quedaba trabado en
+ * "Loading..." para siempre. Ahora las fuentes son @fontsource/* bundleadas
+ * en el JS (import en main.ts) -- @font-face local, cero red externa. Este
+ * loader solo le da tiempo al navegador a parsear/decodificar los
+ * @font-face antes de crear texto de Phaser con ellas (si no, el primer
+ * frame puede dibujar con la fuente de fallback). document.fonts.load()
+ * nunca cuelga para una fuente ya declarada localmente -- el timeout es
+ * sólo red de seguridad por si el navegador no tiene FontFace API.
+ */
+
+const FONT_READY_TIMEOUT_MS = 3000
+
+interface MinimalFontFaceSet
+{
+	load(font: string): Promise<unknown>
+}
 
 export default class WebFontFile extends Phaser.Loader.File
 {
 	private fontNames: string[]
-	private service: string
 
-	constructor(loader: Phaser.Loader.LoaderPlugin, fontNames: string | string[], service = 'google')
+	constructor(loader: Phaser.Loader.LoaderPlugin, fontNames: string | string[])
 	{
 		super(loader, {
 			type: 'webfont',
@@ -14,18 +32,10 @@ export default class WebFontFile extends Phaser.Loader.File
 		})
 
 		this.fontNames = Array.isArray(fontNames) ? fontNames : [fontNames]
-		this.service = service
 	}
 
 	load()
 	{
-		// Si Google Fonts está bloqueado/inalcanzable en el entorno donde corre
-		// el juego (ver el fix de webfont.js más abajo -- mismo problema, otro
-		// dominio), `active` nunca dispara. Sin `inactive` acá, el loader de
-		// Phaser queda esperando este archivo para siempre y el juego no pasa
-		// nunca de la pantalla de carga -- inactive también destraba el loader,
-		// simplemente sin las fuentes custom (fallback a las fuentes del
-		// sistema que ya declara styles.scss).
 		let settled = false
 
 		const advance = () => {
@@ -38,23 +48,18 @@ export default class WebFontFile extends Phaser.Loader.File
 			this.loader.nextFile(this, true)
 		}
 
-		const config = {
-			active: advance,
-			inactive: advance
-		}
+		const fontSet = (document as unknown as { fonts?: MinimalFontFaceSet }).fonts
 
-		switch (this.service)
+		if (!fontSet)
 		{
-			case 'google':
-				config['google'] = {
-					families: this.fontNames
-				}
-				break
-
-			default:
-				throw new Error('Unsupported font service')
+			advance()
+			return
 		}
-		
-		WebFont.load(config)
+
+		Promise.all(this.fontNames.map(name => fontSet.load(`1em "${name}"`)))
+			.catch(() => {})
+			.then(advance)
+
+		setTimeout(advance, FONT_READY_TIMEOUT_MS)
 	}
 }
