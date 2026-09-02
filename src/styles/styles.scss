@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600&display=swap');
+// Fredoka se bundlea localmente vía @fontsource (import en main.ts) --
+// antes venía de fonts.googleapis.com, que se sacó por la misma razón que
+// webfont.js: no depender de un CDN externo para algo tan crítico como
+// cargar el juego.
 
 $base-font-size: 1.5;
 $base-min-width: 250;
