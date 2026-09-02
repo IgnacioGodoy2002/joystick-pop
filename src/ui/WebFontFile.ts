@@ -1,6 +1,5 @@
 import Phaser from 'phaser'
-
-const WebFont = window.WebFont
+import WebFont from 'webfontloader'
 
 export default class WebFontFile extends Phaser.Loader.File
 {
@@ -20,10 +19,28 @@ export default class WebFontFile extends Phaser.Loader.File
 
 	load()
 	{
-		const config = {
-			active: () => {
-				this.loader.nextFile(this, true)
+		// Si Google Fonts está bloqueado/inalcanzable en el entorno donde corre
+		// el juego (ver el fix de webfont.js más abajo -- mismo problema, otro
+		// dominio), `active` nunca dispara. Sin `inactive` acá, el loader de
+		// Phaser queda esperando este archivo para siempre y el juego no pasa
+		// nunca de la pantalla de carga -- inactive también destraba el loader,
+		// simplemente sin las fuentes custom (fallback a las fuentes del
+		// sistema que ya declara styles.scss).
+		let settled = false
+
+		const advance = () => {
+			if (settled)
+			{
+				return
 			}
+
+			settled = true
+			this.loader.nextFile(this, true)
+		}
+
+		const config = {
+			active: advance,
+			inactive: advance
 		}
 
 		switch (this.service)
