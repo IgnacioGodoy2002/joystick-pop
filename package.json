@@ -1,6 +1,6 @@
 {
 	"name": "joystick-pop-sura",
-	"version": "1.3.1",
+	"version": "1.3.2",
 	"description": "Joystick Pop - minijuego de botones para SURA",
 	"scripts": {
 		"start": "parcel src/index.html -p 8000",
@@ -18,13 +18,15 @@
 	},
 	"dependencies": {
 		"@types/lodash": "^4.14.149",
+		"@types/webfontloader": "^1.6.38",
 		"i18next": "^19.9.2",
 		"i18next-browser-languagedetector": "^6.1.4",
 		"jsx-dom": "^6.4.13",
 		"lodash": "^4.17.15",
 		"phaser": "^3.22.0",
 		"regenerator-runtime": "^0.13.3",
-		"rxjs": "^6.5.4"
+		"rxjs": "^6.5.4",
+		"webfontloader": "^1.6.28"
 	},
 	"parcelCleanPaths": [
 		"dist"
