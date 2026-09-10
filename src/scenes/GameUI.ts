@@ -5,6 +5,7 @@ import SceneKeys from '~/consts/SceneKeys'
 import { Observable, SubscriptionLike } from 'rxjs'
 import SuraIntegrationService from '~/integration/sura/SuraIntegrationService'
 import MusicController from '~/game/MusicController'
+import { getSafeAreaInsetsPx } from '~/util/SafeArea'
 import { i18next } from '~/i18n'
 
 const DPR = window.devicePixelRatio
@@ -45,10 +46,14 @@ export default class GameUI extends Phaser.Scene
 		const height = this.scale.height
 		const headerHeight = height * HEADER_HEIGHT_RATIO
 
-		this.headerRect = this.add.rectangle(width * 0.5, 0, width, headerHeight, DarkColor, 0.7)
+		// evita que el reloj/batería/señal del status bar (notch, isla
+		// dinámica) tape el header en mobile -- ver ~/util/SafeArea
+		const safeAreaTop = getSafeAreaInsetsPx().top * DPR
+
+		this.headerRect = this.add.rectangle(width * 0.5, safeAreaTop, width, headerHeight, DarkColor, 0.7)
 
 		const offsetX = 10 * DPR
-		const offsetY = 10 * DPR
+		const offsetY = (10 * DPR) + safeAreaTop
 
 		const startingText = this.createScoreText(this.score)
 		this.scoreText = this.add.text(offsetX, offsetY, startingText, {
@@ -117,10 +122,12 @@ export default class GameUI extends Phaser.Scene
 		const height = this.scale.height
 		const headerHeight = height * HEADER_HEIGHT_RATIO
 
-		this.headerRect?.setPosition(width * 0.5, 0).setSize(width, headerHeight)
+		const safeAreaTop = getSafeAreaInsetsPx().top * DPR
+
+		this.headerRect?.setPosition(width * 0.5, safeAreaTop).setSize(width, headerHeight)
 
 		const offsetX = 10 * DPR
-		const offsetY = 10 * DPR
+		const offsetY = (10 * DPR) + safeAreaTop
 		this.scoreText?.setPosition(offsetX, offsetY)
 		this.pauseIcon?.setPosition(width - offsetX, offsetY)
 

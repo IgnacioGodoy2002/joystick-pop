@@ -1,6 +1,7 @@
 enum TextureKeys
 {
 	Background = 'background',
+	GameCanvasBackground = 'game-canvas-background',
 	Ball = 'ball',
 	BallRed = 'ball-red',
 	BallGreen = 'ball-green',

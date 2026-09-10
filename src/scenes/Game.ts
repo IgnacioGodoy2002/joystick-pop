@@ -48,6 +48,8 @@ export default class Game extends Phaser.Scene
 	private grid?: BallGrid
 	private ballPool?: IBallPool
 
+	private background?: Phaser.GameObjects.Image
+
 	private growthModel!: IGrowthModel
 	private descentController?: DescentController
 	private sfx?: SoundEffectsController
@@ -68,12 +70,21 @@ export default class Game extends Phaser.Scene
 		const width = this.scale.width
 		const height = this.scale.height
 
-		// mismos colores que TitleScreen.ts, para que el canvas sea
-		// continuación visual del fondo de página (navy oscuro -> celeste)
+		// mismos colores que TitleScreen.ts -- se deja como color sólido de
+		// base debajo de la imagen de fondo, así no hay flash blanco si la
+		// imagen tarda un frame en pintarse
 		this.add.graphics()
 			.fillGradientStyle(0x1a2a4d, 0x1a2a4d, 0x2d5a8a, 0x4fb3d9, 1)
 			.fillRect(0, 0, width, height)
 			.setDepth(0)
+
+		// fondo de pantalla completa durante la partida (reemplaza el
+		// degradé visualmente, que queda debajo por si tarda en cargar).
+		// Se reajusta en handleResize() -- ver punto 4 de CLAUDE.md, el
+		// mismo bug del resize tardío en mobile que ya afecta a GameUI/Pause/etc.
+		this.background = this.add.image(width * 0.5, height * 0.5, TextureKeys.GameCanvasBackground)
+			.setDepth(0)
+		this.applyBackgroundCover(width, height)
 
 		const isMobile = window.innerWidth <= MOBILE_BREAKPOINT
 
@@ -152,11 +163,41 @@ export default class Game extends Phaser.Scene
 		const suraService = this.registry.get('suraService') as SuraIntegrationService | undefined
 		suraService?.notifyStarted()
 
+		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+
 		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
 			ballSub.unsubscribe()
 
-			this.handleShutdown()	
+			this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+
+			this.handleShutdown()
 		})
+	}
+
+	// el navegador mobile puede colapsar la barra de direcciones después de
+	// que esta escena ya se creó -- sin esto el fondo queda encuadrado
+	// contra el scale.width/height viejo (mismo bug de resize tardío
+	// documentado en el punto 4 de CLAUDE.md)
+	private handleResize()
+	{
+		this.applyBackgroundCover(this.scale.width, this.scale.height)
+	}
+
+	// escala + centra la imagen tipo "background-size: cover": cubre todo
+	// width x height sin distorsionar el aspect ratio (puede recortar los
+	// bordes de la imagen, nunca deja bandas vacías)
+	private applyBackgroundCover(width: number, height: number)
+	{
+		if (!this.background)
+		{
+			return
+		}
+
+		const tex = this.background
+		const scale = Math.max(width / tex.width, height / tex.height)
+
+		tex.setPosition(width * 0.5, height * 0.5)
+		tex.setScale(scale)
 	}
 
 	private handleGameOver()
