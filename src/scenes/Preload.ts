@@ -15,6 +15,7 @@ export default class Preload extends Phaser.Scene
 	preload()
 	{
 		this.load.image(TextureKeys.Background, 'assets/game/background.png')
+		this.load.image(TextureKeys.GameCanvasBackground, 'assets/game/game-canvas-background.png')
 		this.load.image(TextureKeys.Ball, 'assets/game/ball_base.png')
 		this.load.image(TextureKeys.BallRed, 'assets/game/ball_red.png')
 		this.load.image(TextureKeys.BallGreen, 'assets/game/ball_green.png')

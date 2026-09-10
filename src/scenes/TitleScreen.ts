@@ -7,6 +7,7 @@ import { DarkColor } from '~/consts/Colors'
 import SceneKeys from '~/consts/SceneKeys'
 import SoundEffectsController from '~/game/SoundEffectsController'
 import MusicController from '~/game/MusicController'
+import { getSafeAreaInsetsPx } from '~/util/SafeArea'
 import { Subject } from 'rxjs'
 import TextureKeys from '~/consts/TextureKeys'
 import { i18next, USER_LANGUAGE_STORAGE_KEY } from '~/i18n'
@@ -99,7 +100,10 @@ export default class HelloWorldScene extends Phaser.Scene
 		// (MusicController) -- los efectos de sonido (disparo, game over)
 		// quedan siempre audibles, no se tocan acá.
 		const dpr = window.devicePixelRatio
-		this.musicIcon = this.add.text(width - 10 * dpr, 10 * dpr, this.musicIconText(), {
+		// evita que el notch/status bar tape el ícono en la esquina superior
+		// derecha en mobile -- ver ~/util/SafeArea
+		const safeAreaTop = getSafeAreaInsetsPx().top * dpr
+		this.musicIcon = this.add.text(width - 10 * dpr, (10 * dpr) + safeAreaTop, this.musicIconText(), {
 			fontFamily: 'Righteous',
 			fontSize: 22 * dpr
 		})
@@ -162,7 +166,8 @@ export default class HelloWorldScene extends Phaser.Scene
 
 		this.languageChipsEl?.setPosition(x, height * 0.94)
 
-		this.musicIcon?.setPosition(width - 10 * window.devicePixelRatio, 10 * window.devicePixelRatio)
+		const safeAreaTop = getSafeAreaInsetsPx().top * window.devicePixelRatio
+		this.musicIcon?.setPosition(width - 10 * window.devicePixelRatio, (10 * window.devicePixelRatio) + safeAreaTop)
 	}
 
 	private musicIconText()
