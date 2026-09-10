@@ -70,13 +70,11 @@ export default class Game extends Phaser.Scene
 		const width = this.scale.width
 		const height = this.scale.height
 
-		// color casi negro (sampleado del propio PNG de fondo, ver
-		// applyBackgroundCover) debajo de la imagen -- evita un flash blanco
-		// si la imagen tarda un frame en pintarse, y hace que las bandas de
-		// letterbox de applyBackgroundCover (fit "contain") sean casi
-		// imperceptibles contra el fondo casi negro de la imagen real
+		// mismos colores que TitleScreen.ts -- se deja como color sólido de
+		// base debajo de la imagen de fondo, así no hay flash blanco si la
+		// imagen tarda un frame en pintarse
 		this.add.graphics()
-			.fillStyle(0x0a0810, 1)
+			.fillGradientStyle(0x1a2a4d, 0x1a2a4d, 0x2d5a8a, 0x4fb3d9, 1)
 			.fillRect(0, 0, width, height)
 			.setDepth(0)
 
@@ -185,16 +183,9 @@ export default class Game extends Phaser.Scene
 		this.applyBackgroundCover(this.scale.width, this.scale.height)
 	}
 
-	// escala + centra la imagen tipo "background-size: contain": muestra la
-	// imagen COMPLETA sin distorsionar el aspect ratio (puede dejar bandas
-	// vacías, nunca recorta). Antes usaba "cover" (Math.max), pero la
-	// imagen es panorámica (1920x1080) mientras que el canvas del juego es
-	// angosto y alto en mobile -- con "cover" solo se veía una franja
-	// vertical centrada de la imagen, que recortaba el logo "GG" (que ocupa
-	// casi todo el ancho de la imagen) dejando ver apenas la mitad. Con
-	// "contain" el logo se ve completo, con bandas arriba/abajo que quedan
-	// casi invisibles contra el color de fondo casi negro (ver fillStyle en
-	// create())
+	// escala + centra la imagen tipo "background-size: cover": cubre todo
+	// width x height sin distorsionar el aspect ratio (puede recortar los
+	// bordes de la imagen, nunca deja bandas vacías)
 	private applyBackgroundCover(width: number, height: number)
 	{
 		if (!this.background)
@@ -203,7 +194,7 @@ export default class Game extends Phaser.Scene
 		}
 
 		const tex = this.background
-		const scale = Math.min(width / tex.width, height / tex.height)
+		const scale = Math.max(width / tex.width, height / tex.height)
 
 		tex.setPosition(width * 0.5, height * 0.5)
 		tex.setScale(scale)
