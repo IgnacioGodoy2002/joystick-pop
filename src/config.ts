@@ -1,3 +1,4 @@
+import Phaser from 'phaser'
 import { DarkColor } from '~/consts/Colors'
 import ElementKeys from '~/consts/ElementKeys'
 
