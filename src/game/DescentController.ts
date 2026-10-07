@@ -31,7 +31,7 @@ export default class DescentController
 		return this.ballGrid.bottom
 	}
 
-	constructor(scene: Phaser.Scene, grid: BallGrid, growthModel: IGrowthModel, speed = 0.22)
+	constructor(scene: Phaser.Scene, grid: BallGrid, growthModel: IGrowthModel, speed = 0.14)
 	{
 		this.scene = scene
 		this.ballGrid = grid
@@ -88,7 +88,10 @@ export default class DescentController
 		{
 			case DescentState.Descending:
 			{
-				this.ballGrid.moveBy(this.speed)
+				// Referencia de 60 FPS: misma velocidad en pantallas de 30, 60 o 120 Hz.
+				// Limitar pausas largas evita saltos al volver a la pestaña.
+				const frameScale = Math.max(0, Math.min(dt, 50)) / (1000 / 60)
+				this.ballGrid.moveBy(this.speed * frameScale)
 
 				const dy = this.ballGrid.height - this.ballGrid.bottom
 				if (dy < this.ballGrid.ballInterval * 5)

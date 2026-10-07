@@ -1,4 +1,6 @@
 import Phaser from 'phaser'
+import {getSafeAreaInsetsPx} from '~/util/SafeArea'
+import {CharacterStage, selectedCharacter} from '~/characters/CharacterStage'
 
 import TextureKeys from '~/consts/TextureKeys'
 
@@ -45,6 +47,8 @@ enum GameState
 export default class Game extends Phaser.Scene
 {
 	private shooter?: IShooter
+	private characterStage?: CharacterStage
+	private characterHost?: HTMLElement
 	private grid?: BallGrid
 	private ballPool?: IBallPool
 
@@ -86,7 +90,7 @@ export default class Game extends Phaser.Scene
 			.setDepth(0)
 		this.applyBackgroundCover(width, height)
 
-		const isMobile = window.innerWidth <= MOBILE_BREAKPOINT
+		const isMobile = (this.scale.width / DPR) <= MOBILE_BREAKPOINT
 
 		// tamaño de bola objetivo para la plataforma actual — SIEMPRE explícito,
 		// nunca heredado del tamaño nativo del PNG de la textura de color
@@ -109,9 +113,20 @@ export default class Game extends Phaser.Scene
 		// real de la plataforma actual para no quedar chicos ni gigantes
 		const shooterScale = ballSize / REFERENCE_BALL_SIZE
 
-		const shooterOffsetY = isMobile ? (50 * DPR) : (60 * DPR)
+		const shooterOffsetY = ((isMobile ? 50 : 60) + getSafeAreaInsetsPx().bottom) * DPR
 		this.shooter = this.add.shooter(width * 0.5, height - shooterOffsetY, '', shooterScale)
 		this.shooter.setGuide(new ShotGuide(this))
+        this.characterHost = document.createElement('div')
+        this.characterHost.className = 'pop-game-character'
+        document.getElementById('phaser-container')!.appendChild(this.characterHost)
+        try {this.characterStage = new CharacterStage(this.characterHost, selectedCharacter(), true)} catch(e) {console.error(e)}
+        const characterShotSub = this.shooter.onShoot().subscribe(() => this.characterStage?.shoot())
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            characterShotSub.unsubscribe()
+            this.characterStage?.destroy()
+            this.characterStage = undefined
+            this.characterHost?.remove()
+        })
 
 		const ballPool = this.add.ballPool(TextureKeys.Ball)
 		this.ballPool = ballPool
@@ -370,6 +385,7 @@ export default class Game extends Phaser.Scene
 
 		this.growthModel.update(dt)
 		this.shooter.update(dt)
+        this.characterStage?.setAim(this.shooter.rotation / 1.3)
 		this.descentController.update(dt)
 		this.checkHoleGuard()
 

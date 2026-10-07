@@ -1,3 +1,4 @@
+import './jsx-dom-shim'
 import 'regenerator-runtime'
 
 // Ver scripts/generate-embedded-fonts.js -- @font-face con los woff2 de
@@ -14,9 +15,13 @@ import config from './config'
 
 import initI18n from './i18n'
 
+document.body.dataset.nativeApp = String(Boolean(window['ReactNativeWebView']))
+
 initI18n()
 
 const game = new Phaser.Game(config)
+
+window['__joystickPopGame'] = game
 
 registerScenes(game)
 
