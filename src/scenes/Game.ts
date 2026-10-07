@@ -386,11 +386,12 @@ export default class Game extends Phaser.Scene
 		this.growthModel.update(dt)
 		this.shooter.update(dt)
         this.characterStage?.setAim(this.shooter.rotation / 1.3)
-		this.descentController.update(dt)
+		const dangerY = this.shooter.y - this.shooter.radius
+		this.descentController.update(dt, dangerY)
 		this.checkHoleGuard()
 
 		const dcy = this.descentController.yPosition
-		if (dcy > this.shooter.y - this.shooter.radius)
+		if (dcy > dangerY)
 		{
 			// game over
 			this.state = GameState.GameOver
