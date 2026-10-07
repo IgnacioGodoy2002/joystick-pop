@@ -6,7 +6,6 @@ import BallLayoutData, {
 
 import BallColor, { colorIsMatch } from './BallColor'
 import { Subject } from 'rxjs'
-import BallState from '~/consts/BallState'
 
 interface IGridPosition
 {

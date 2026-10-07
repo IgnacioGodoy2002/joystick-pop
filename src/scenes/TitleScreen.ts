@@ -1,246 +1,32 @@
 import Phaser from 'phaser'
-
-import playButton from '~/ui/PlayButton'
-import button from '~/ui/Buttons'
-import languageChips from '~/ui/LanguageChips'
-import { DarkColor } from '~/consts/Colors'
 import SceneKeys from '~/consts/SceneKeys'
-import SoundEffectsController from '~/game/SoundEffectsController'
 import MusicController from '~/game/MusicController'
-import { getSafeAreaInsetsPx } from '~/util/SafeArea'
-import { Subject } from 'rxjs'
-import TextureKeys from '~/consts/TextureKeys'
-import { i18next, USER_LANGUAGE_STORAGE_KEY } from '~/i18n'
-
-export default class HelloWorldScene extends Phaser.Scene
-{
-	private sfx?: SoundEffectsController
-	private uiClickSubject = new Subject<void>()
-
-	private bg?: Phaser.GameObjects.Graphics
-	private title1?: Phaser.GameObjects.Text
-	private titleSuffix?: Phaser.GameObjects.Text
-	private playBtn?: Phaser.GameObjects.DOMElement
-	private howToPlayBtn?: Phaser.GameObjects.DOMElement
-	private leaderboardBtn?: Phaser.GameObjects.DOMElement
-	private languageChipsEl?: Phaser.GameObjects.DOMElement
-	private musicIcon?: Phaser.GameObjects.Text
-
-	init()
-	{
-		this.sfx = new SoundEffectsController(this.sound)
-		this.sfx.handleUIClick(this.uiClickSubject.asObservable())
-	}
-
-    create()
-    {
-		const width = this.scale.width
-		const height = this.scale.height
-
-		const x = width * 0.5
-		const y = height * 0.2
-
-		this.bg = this.add.graphics()
-			.fillGradientStyle(0x1a2a4d, 0x1a2a4d, 0x2d5a8a, 0x4fb3d9, 1)
-			.fillRect(0, 0, width, height)
-			.setDepth(0)
-
-		this.createBackgroundParticles(width, height)
-		this.createLanguageSwitcher()
-
-		const fontSize = Math.min(width * 0.095, 225)
-        this.title1 = this.add.text(x, y, i18next.t('titleScreen.title'), {
-			fontFamily: 'Nosifer',
-			fontSize,
-			color: '#508cdc',
-			align: 'center',
-			stroke: DarkColor,
-			strokeThickness: 8
-		})
-		.setOrigin(0.5, 0.5)
-
-		const maxTitleWidth = width * 0.92
-		if (this.title1.width > maxTitleWidth)
-		{
-			this.title1.setFontSize(fontSize * (maxTitleWidth / this.title1.width))
-		}
-
-		this.titleSuffix = this.add.text(x, this.title1.y + this.title1.height, i18next.t('titleScreen.titleSuffix'), {
-			fontFamily: 'Lemon',
-			fontSize: fontSize * 1.5,
-			color: '#FEC81A',
-			stroke: DarkColor,
-			strokeThickness: 4
-		})
-		.setOrigin(0.5, 0.5)
-
-		this.playBtn = this.add.dom(x, height * 0.6, playButton(i18next.t('titleScreen.play')))
-			.addListener('click').on('click', () => {
-				this.uiClickSubject.next()
-
-				// this.scene.start(SceneKeys.Game)
-				this.scene.start(SceneKeys.TipsInterstitial, {
-					target: SceneKeys.Game
-				})
-			})
-
-		this.howToPlayBtn = this.add.dom(x, this.playBtn.y + this.playBtn.height + 20, button(i18next.t('titleScreen.howToPlay')))
-			.addListener('click').on('click', () => {
-				this.uiClickSubject.next()
-				this.scene.start(SceneKeys.HowToPlay)
-			})
-
-		this.leaderboardBtn = this.add.dom(x, this.howToPlayBtn.y + this.howToPlayBtn.height + 20, button(i18next.t('titleScreen.leaderboard')))
-			.addListener('click').on('click', () => {
-				this.uiClickSubject.next()
-				this.scene.start(SceneKeys.Leaderboard)
-			})
-
-		// Esquina superior derecha. Muteá/activa solo la música
-		// (MusicController) -- los efectos de sonido (disparo, game over)
-		// quedan siempre audibles, no se tocan acá.
-		const dpr = window.devicePixelRatio
-		// evita que el notch/status bar tape el ícono en la esquina superior
-		// derecha en mobile -- ver ~/util/SafeArea
-		const safeAreaTop = getSafeAreaInsetsPx().top * dpr
-		this.musicIcon = this.add.text(width - 10 * dpr, (10 * dpr) + safeAreaTop, this.musicIconText(), {
-			fontFamily: 'Righteous',
-			fontSize: 22 * dpr
-		})
-		.setOrigin(1, 0)
-		.setPadding(10 * dpr, 10 * dpr, 10 * dpr, 10 * dpr)
-		.setInteractive({ useHandCursor: true })
-		.on(Phaser.Input.Events.POINTER_DOWN, () => {
-			MusicController.toggleMute()
-			this.musicIcon?.setText(this.musicIconText())
-		})
-
-		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
-
-		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-			this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this)
-			this.sfx?.destroy()
-		})
-    }
-
-	// el navegador mobile puede colapsar la barra de direcciones después de
-	// que esta escena ya se creó — sin esto, el fondo, el título y los
-	// botones quedan calculados contra el scale.width/height viejo
-	private handleResize()
-	{
-		const width = this.scale.width
-		const height = this.scale.height
-		const x = width * 0.5
-		const y = height * 0.2
-
-		this.bg?.clear()
-			.fillGradientStyle(0x1a2a4d, 0x1a2a4d, 0x2d5a8a, 0x4fb3d9, 1)
-			.fillRect(0, 0, width, height)
-
-		const fontSize = Math.min(width * 0.095, 225)
-		this.title1?.setPosition(x, y).setFontSize(fontSize)
-
-		const maxTitleWidth = width * 0.92
-		if (this.title1 && this.title1.width > maxTitleWidth)
-		{
-			this.title1.setFontSize(fontSize * (maxTitleWidth / this.title1.width))
-		}
-
-		if (this.title1 && this.titleSuffix)
-		{
-			this.titleSuffix.setPosition(x, this.title1.y + this.title1.height)
-				.setFontSize(fontSize * 1.5)
-		}
-
-		this.playBtn?.setPosition(x, height * 0.6)
-
-		if (this.playBtn && this.howToPlayBtn)
-		{
-			this.howToPlayBtn.setPosition(x, this.playBtn.y + this.playBtn.height + 20)
-		}
-
-		if (this.howToPlayBtn && this.leaderboardBtn)
-		{
-			this.leaderboardBtn.setPosition(x, this.howToPlayBtn.y + this.howToPlayBtn.height + 20)
-		}
-
-		this.languageChipsEl?.setPosition(x, height * 0.94)
-
-		const safeAreaTop = getSafeAreaInsetsPx().top * window.devicePixelRatio
-		this.musicIcon?.setPosition(width - 10 * window.devicePixelRatio, (10 * window.devicePixelRatio) + safeAreaTop)
-	}
-
-	private musicIconText()
-	{
-		return MusicController.isMuted() ? '🔇' : '🔊'
-	}
-
-	private createLanguageSwitcher()
-	{
-		const width = this.scale.width
-		const height = this.scale.height
-
-		const currentLanguage = i18next.language.slice(0, 2).toLowerCase()
-
-		this.languageChipsEl = this.add.dom(width * 0.5, height * 0.94, languageChips(currentLanguage))
-			.addListener('click')
-			.on('click', (event: MouseEvent) => {
-				const target = event.target as HTMLElement
-				const chip = target.closest('[data-lang]') as HTMLElement | null
-				const lang = chip?.dataset.lang
-
-				if (!lang || lang === currentLanguage)
-				{
-					return
-				}
-
-				// misma lógica de siempre: localStorage tiene prioridad sobre
-				// la detección automática (ver i18n/index.ts), sin cambios acá
-				i18next.changeLanguage(lang).then(() => {
-					localStorage.setItem(USER_LANGUAGE_STORAGE_KEY, lang)
-					this.scene.restart()
-				})
-			})
-	}
-
-	private createBackgroundParticles(width: number, height: number)
-	{
-		const textures = [
-			TextureKeys.BallRed,
-			TextureKeys.BallGreen,
-			TextureKeys.BallBlue,
-			TextureKeys.BallYellow
-		]
-
-		const count = Phaser.Math.Between(18, 22)
-
-		for (let i = 0; i < count; i++)
-		{
-			const texture = textures[Phaser.Math.Between(0, textures.length - 1)]
-
-			const particle = this.add.image(0, 0, texture)
-				.setDepth(1)
-				.setScale(Phaser.Math.FloatBetween(0.2, 0.3))
-				.setAlpha(Phaser.Math.FloatBetween(0.15, 0.25))
-
-			this.animateBackgroundParticle(particle, width, height)
-		}
-	}
-
-	private animateBackgroundParticle(particle: Phaser.GameObjects.Image, width: number, height: number)
-	{
-		particle.setPosition(Phaser.Math.Between(0, width), height + 50)
-		particle.setAngle(0)
-
-		this.tweens.add({
-			targets: particle,
-			y: -50,
-			angle: 360,
-			duration: Phaser.Math.Between(8000, 14000),
-			ease: 'Linear',
-			onComplete: () => {
-				this.animateBackgroundParticle(particle, width, height)
-			}
-		})
-	}
+import {CharacterStage, CHARACTERS, selectedCharacter, saveCharacter, CharacterId} from '~/characters/CharacterStage'
+import {i18next, USER_LANGUAGE_STORAGE_KEY} from '~/i18n'
+import {STORAGE_KEY_RECORD} from '~/integration/sura/SuraIntegrationService'
+import '../styles/character-menu.css'
+export default class TitleScreen extends Phaser.Scene {
+ private host?:HTMLElement;private stage?:CharacterStage;private selected=selectedCharacter();private keyHandler?: (e:KeyboardEvent)=>void;
+ create(){
+  document.body.dataset.popScreen='menu';this.selected=selectedCharacter();
+  const lang=i18next.language.slice(0,2);const es=lang!=='en'&&lang!=='pt';const pt=lang==='pt';
+  const txt={choose:es?'ELEGÍ TU PERSONAJE':pt?'ESCOLHA SEU PERSONAGEM':'CHOOSE YOUR CHARACTER',play:es?'JUGAR':pt?'JOGAR':'PLAY',how:es?'Cómo jugar':pt?'Como jogar':'How to play',rank:es?'Ranking':pt?'Ranking':'Leaderboard',rotate:es?'Girar':pt?'Girar':'Rotate',hint:es?'Mantené presionado para apuntar. Soltá para disparar.':pt?'Segure para mirar. Solte para disparar.':'Hold to aim. Release to shoot.',rule:es?'Uní 3 del mismo color y sumá puntos.':pt?'Combine 3 da mesma cor e ganhe pontos.':'Match 3 of the same color and score points.',record:es?'TU RÉCORD':pt?'SEU RECORDE':'YOUR BEST'};
+  const host=document.createElement('section');host.className='pop-menu';host.setAttribute('aria-label','Menú Joystick Pop');this.host=host;
+  host.innerHTML=`<div class="pop-shell"><header class="pop-top"><span class="pop-brand"><b>✚</b> JOYSTICK POP</span><div class="pop-record"><span>${txt.record}</span><strong>${Number(localStorage.getItem(STORAGE_KEY_RECORD)||0)}</strong></div><button class="pop-sound" aria-label="Música" aria-pressed="${!MusicController.isMuted()}">${MusicController.isMuted()?'🔇':'🔊'}</button></header><main class="pop-main"><div class="pop-intro"><h1 class="pop-title"><span>JOYSTICK</span><span>POP!</span></h1><p class="pop-rule">${txt.rule}</p><button class="pop-play">${txt.play}</button><div class="pop-secondary"><button data-action="how">${txt.how}</button><button data-action="ranking">${txt.rank}</button></div><div class="pop-instruction"><span>✚</span><p>${txt.hint}</p></div></div><div class="pop-characters"><div class="pop-select-header"><span>${txt.choose}</span><span class="pop-index"></span></div><div class="pop-showcase"><div class="pop-stage"></div><button class="pop-arrow pop-prev" aria-label="Personaje anterior">‹</button><button class="pop-arrow pop-next" aria-label="Personaje siguiente">›</button><div class="pop-character-name"></div><button class="pop-rotate" aria-pressed="false">↻ ${txt.rotate}</button></div><div class="pop-cards">${CHARACTERS.map(c=>`<button class="pop-card" data-character="${c.id}" aria-pressed="false"><span class="pop-check">✓</span><img alt="${c.name}"/><span>${c.name}</span></button>`).join('')}</div></div></main><footer class="pop-footer"><span class="pop-footer-hint">${txt.hint}</span><div class="pop-langs">${['es','en','pt'].map(l=>`<button data-lang="${l}" aria-pressed="${lang===l}">${l.toUpperCase()}</button>`).join('')}</div></footer></div>`;
+  document.body.appendChild(host);
+  document.getElementById('pop-boot')?.remove();
+  try{this.stage=new CharacterStage(host.querySelector('.pop-stage')!,this.selected);const images=this.stage.thumbnails();host.querySelectorAll<HTMLImageElement>('.pop-card img').forEach(img=>{img.src=images[img.parentElement!.dataset.character!]})}catch(e){console.error(e);host.querySelector('.pop-stage')!.textContent='No se pudo cargar el personaje. Recargá la página.'}
+  this.select(this.selected);
+  host.querySelector('.pop-play')!.addEventListener('click',()=>this.scene.start(SceneKeys.TipsInterstitial,{target:SceneKeys.Game}));
+  host.querySelector('[data-action="how"]')!.addEventListener('click',()=>this.scene.start(SceneKeys.HowToPlay));host.querySelector('[data-action="ranking"]')!.addEventListener('click',()=>this.scene.start(SceneKeys.Leaderboard));
+  host.querySelectorAll<HTMLElement>('[data-character]').forEach(b=>b.addEventListener('click',()=>this.select(b.dataset.character as CharacterId)));
+  host.querySelector('.pop-prev')!.addEventListener('click',()=>this.cycle(-1));host.querySelector('.pop-next')!.addEventListener('click',()=>this.cycle(1));
+  host.querySelector('.pop-rotate')!.addEventListener('click',e=>(e.currentTarget as HTMLElement).setAttribute('aria-pressed',String(this.stage?.rotate())));
+  host.querySelector('.pop-sound')!.addEventListener('click',e=>{MusicController.toggleMute();const b=e.currentTarget as HTMLElement;b.textContent=MusicController.isMuted()?'🔇':'🔊';b.setAttribute('aria-pressed',String(!MusicController.isMuted()))});
+  host.querySelectorAll<HTMLElement>('[data-lang]').forEach(b=>b.addEventListener('click',()=>{localStorage.setItem(USER_LANGUAGE_STORAGE_KEY,b.dataset.lang!);i18next.changeLanguage(b.dataset.lang!).then(()=>this.scene.restart())}));
+  this.keyHandler=e=>{if(e.key==='ArrowLeft'){e.preventDefault();this.cycle(-1)}if(e.key==='ArrowRight'){e.preventDefault();this.cycle(1)}};window.addEventListener('keydown',this.keyHandler);
+  this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{this.stage?.destroy();this.stage=undefined;this.host?.remove();if(this.keyHandler)window.removeEventListener('keydown',this.keyHandler);document.body.dataset.popScreen='game'});
+ }
+ private cycle(step:number){const i=CHARACTERS.findIndex(c=>c.id===this.selected);this.select(CHARACTERS[(i+step+4)%4].id)}
+ private select(id:CharacterId){this.selected=id;saveCharacter(id);this.stage?.select(id);const i=CHARACTERS.findIndex(c=>c.id===id);this.host!.querySelector('.pop-index')!.textContent=`0${i+1} / 04`;this.host!.querySelector('.pop-character-name')!.textContent=CHARACTERS[i].name;this.host!.querySelector('.pop-rotate')!.setAttribute('aria-pressed','false');this.host!.querySelectorAll<HTMLElement>('[data-character]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.character===id)))}
 }
