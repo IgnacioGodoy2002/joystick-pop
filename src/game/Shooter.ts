@@ -40,6 +40,7 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 	private shotGuide?: IShotGuide
 
 	private scaleFactor: number
+    private base: Phaser.GameObjects.Image
 
 	private shootSubject = new Subject<IBall>()
 
@@ -61,6 +62,7 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 
 		const base = scene.add.image(0, 0, TextureKeys.Shooter)
 		base.setDisplaySize(BASE_WIDTH * scaleFactor, BASE_HEIGHT * scaleFactor)
+        this.base = base
 
 		this.add(base)
 
@@ -156,8 +158,8 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 		const dx = pointer.x - this.x
 		const dy = pointer.y - this.y
 
-		const vec = new Phaser.Math.Vector2(dx, dy)
-		vec.normalize()
+		const angle = Phaser.Math.Clamp(Math.atan2(dy, dx), -Math.PI + 0.18, -0.18)
+        const vec = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle))
 
 		const rotation = vec.angle()
 		this.rotation = rotation + HALF_PI
@@ -186,10 +188,13 @@ export default class Shooter extends Phaser.GameObjects.Container implements ISh
 		const dx = pointer.x - this.x
 		const dy = pointer.y - this.y
 
-		const vec = new Phaser.Math.Vector2(dx, dy)
-		vec.normalize()
+		const angle = Phaser.Math.Clamp(Math.atan2(dy, dx), -Math.PI + 0.18, -0.18)
+        const vec = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle))
 
 		this.ball.launch(vec)
+        this.scene.tweens.killTweensOf(this.base)
+        this.base.y = 0
+        this.scene.tweens.add({targets:this.base, y:9*this.scaleFactor, duration:75, yoyo:true, ease:'Sine.easeInOut'})
 
 		this.shootSubject.next(this.ball)
 
