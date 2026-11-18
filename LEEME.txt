@@ -1,0 +1,119 @@
+JOYSTICK POP — ENTREGA COMPLETA
+Versión: 1.4.3
+Fecha de exportación: 30 de octubre de 2026
+
+CONTENIDO
+
+juego-web/
+  Juego compilado y listo para publicar. Incluye index.html, JavaScript,
+  estilos, imágenes, fuentes integradas y audio. Rutas relativas: anda
+  tanto en la raíz del dominio como en una subcarpeta o dentro de un
+  iframe.
+
+joystick-pop-build-1.4.3/
+  Lo mismo que juego-web, más BUILD_INFO.txt. Es el paquete con el
+  formato de entrega de siempre.
+
+joystick-pop-build-1.4.3.zip
+  Ese mismo paquete comprimido, con index.html en la raíz del ZIP.
+
+codigo-fuente/
+  Proyecto completo editable, con TypeScript, personajes, recursos,
+  configuración, scripts de compilación y dependencias declaradas.
+  Ver codigo-fuente/BUILD_INFO.txt para el detalle técnico de esta build.
+
+IMPORTANTE ANTES DE SUBIR ESTA BUILD
+
+El bug de las bolas superpuestas/cortadas ya estaba corregido en 1.4.2,
+pero esa corrección no estaba llegando a los usuarios: la página seguía
+sirviendo el programa viejo.
+
+El archivo index.html no lleva huella de versión en el nombre, pero el
+programa del juego sí. Si el servidor o el CDN conservan un index.html
+cacheado, ese index sigue apuntando al programa anterior (que además quedó
+en el servidor), y los usuarios siguen jugando la versión vieja por más que
+se suba la nueva.
+
+Al publicar esta build:
+
+  - En el backoffice de SURA, confirmar cuál build quedó marcada como
+    activa/publicada para el minijuego.
+  - En un hosting común, borrar los archivos main.*.js anteriores de la
+    carpeta. Así, si quedara un index.html cacheado, falla de forma visible
+    en vez de servir el juego viejo en silencio.
+
+CÓMO SABER EN 5 SEGUNDOS QUÉ VERSIÓN ESTÁ CORRIENDO
+
+  1) La versión ahora se ve en el menú, abajo, al lado de los botones de
+     idioma (ES/EN/PT). Tiene que decir v1.4.3.
+  2) A ojo, sin leer nada: desde 1.4.2 ninguna bola queda cortada por el
+     borde izquierdo ni derecho de la pantalla. Si ves media bola cortada
+     contra un borde, estás viendo una versión anterior.
+
+CAMBIOS INCLUIDOS
+
+Novedades de 1.4.3 (correcciones, sin cambios de contenido ni de arte):
+
+- Versión visible en el menú, para poder confirmar de un vistazo qué build
+  está publicada.
+- El tablero ahora se repara solo después de cada tiro. Antes, el cálculo
+  de las bolas que se quedaron sin sostén sólo se hacía cuando explotaban
+  3 o más; si una bola quedaba descolgada por otra vía, se quedaba flotando
+  en el aire hasta el final de la partida.
+
+Novedades de 1.4.2 (correcciones, sin cambios de contenido ni de arte):
+
+- Bolas superpuestas: corregido. Seguía pasando después de 1.4.1 por
+  dos causas distintas a la que se había arreglado entonces.
+  Primero, el rebote al encastrar y la sacudida de las bolas vecinas
+  usaban posiciones fijas calculadas al disparar, así que durante esa
+  animación esas bolas se perdían el descenso del tablero y quedaban
+  corridas de su fila de forma permanente; el error se acumulaba tiro
+  a tiro, por eso el desorden crecía hacia abajo.
+  Segundo, el tablero era un 7 % más ancho que la pantalla (las filas
+  van alternadas y faltaba contar ese medio hueco), de ahí las bolas
+  cortadas contra los dos bordes.
+- Al perder, el tablero de fondo ya no queda con bolas a medio camino.
+- Corregido un caso raro, con tiros muy seguidos, en el que el
+  lanzador podía no volver a cargar y el juego quedaba trabado.
+
+De 1.4.1:
+
+- Ranking y pago de recompensas funcionando en la app mobile.
+- El ranking nunca muestra datos de relleno cuando está embebido.
+
+De 1.4.0:
+
+- Menú de selección con mapache, tucán, capibara y Suri.
+- Personajes 3D con animación y reacción al apuntar y disparar.
+- Joystick orientado hacia los personajes.
+- Diseño vertical adaptable a distintos anchos de celular.
+- Presentación más ancha en escritorio y fondo exclusivo para web.
+- Corrección del inicio del juego y del problema de pantalla vacía.
+- Descenso aproximadamente 36 % más lento, con velocidad normalizada
+  según el tiempo transcurrido entre cuadros.
+
+PROBAR EL JUEGO
+
+Servir la carpeta juego-web con un servidor HTTP estático.
+Por ejemplo, con Python instalado, desde esa carpeta:
+
+  python -m http.server 8000
+
+Luego abrir http://localhost:8000 en el navegador.
+
+PUBLICAR
+
+Subir el contenido de juego-web (o del ZIP) al alojamiento web,
+conservando las carpetas y nombres. El punto de entrada es index.html.
+
+EDITAR Y RECOMPILAR
+
+Con Node.js y npm instalados, desde codigo-fuente:
+
+  npm ci
+  npm run build
+
+La nueva compilación se genera en codigo-fuente/dist.
+La carpeta node_modules se instala con npm ci; no hace falta incluirla
+para publicar o jugar la versión ya compilada.

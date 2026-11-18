@@ -30,6 +30,15 @@ const MIN_INITIAL_ROWS = 6
 const MOBILE_BREAKPOINT = 768
 const MAX_MOBILE_COLUMNS = 7
 
+// Las filas alternan: la "staggered" arranca medio ancho de bola más a la
+// derecha que la otra (ver BallGrid.addRowToFront). O sea que el campo
+// hexagonal completo NO mide `columns` bolas de ancho, mide `columns + 0.5`.
+// Dimensionar la bola como `width / columns` -- lo que se hacía -- dejaba un
+// campo de 1.071x el ancho de la pantalla: las filas impares se iban medio
+// radio por derecha y las pares medio radio por izquierda, que es por qué se
+// veían bolas cortadas contra los dos bordes.
+const STAGGER_SLOTS = 0.5
+
 // tamaño visual de bola al que está calibrado todo lo demás (shooter,
 // GAP, columnas de desktop) — deliberadamente independiente del tamaño
 // nativo del PNG de las texturas de color, que puede cambiar (ver
@@ -94,7 +103,7 @@ export default class Game extends Phaser.Scene
 
 		// tamaño de bola objetivo para la plataforma actual — SIEMPRE explícito,
 		// nunca heredado del tamaño nativo del PNG de la textura de color
-		const ballSize = isMobile ? (width / MAX_MOBILE_COLUMNS) : DESKTOP_BALL_SIZE
+		const ballSize = isMobile ? (width / (MAX_MOBILE_COLUMNS + STAGGER_SLOTS)) : DESKTOP_BALL_SIZE
 
 		// el rebote contra los bordes izq/der usa el collider físico de la bola
 		// (physicsRadius, más chico que el radio visual — ver Ball.physicsRadius,
@@ -139,7 +148,11 @@ export default class Game extends Phaser.Scene
 
 		this.grid = new BallGrid(this, staticBallPool)
 
-		const columns = isMobile ? MAX_MOBILE_COLUMNS : Math.floor(width / this.grid.ballWidth)
+		// desktop: misma corrección: hay que descontar el medio slot del
+		// stagger o la última columna queda parcialmente fuera de pantalla
+		const columns = isMobile
+			? MAX_MOBILE_COLUMNS
+			: Math.max(1, Math.floor((width / this.grid.ballWidth) - STAGGER_SLOTS))
 		this.growthModel = new BallGrowthModel(columns)
 		this.grid.setLayoutData(new BallLayoutData(this.growthModel, columns))
 
@@ -233,6 +246,11 @@ export default class Game extends Phaser.Scene
 
 		this.scene.stop(SceneKeys.Pause)
 
+		// pausar la escena congela su TweenManager: cualquier rebote/jiggle
+		// a medio camino se queda ahí para siempre y el tablero que se ve
+		// de fondo en Game Over queda con bolas corridas de su celda
+		this.grid?.settleAll()
+
 		this.scene.pause(SceneKeys.Game)
 		this.scene.run(SceneKeys.GameOver, {
 			score,
@@ -304,8 +322,12 @@ export default class Game extends Phaser.Scene
 		const vx = b.body.deltaX()
 		const vy = b.body.deltaY()
 
-		const gx = gb.x
-		const gy = gb.y
+		// posición canónica de la bola de la grilla (ver Ball.homeX/homeY):
+		// si está en pleno jiggle, su `y` visual está corrida y el punto de
+		// contacto que se calcula acá -- del que BallGrid.findFreeCellAround
+		// deriva la celda destino -- hereda esa corrida
+		const gx = gb.homeX
+		const gy = gb.homeY
 
 		// determine direction from ball to grid
 		// then negate it to have opposite direction

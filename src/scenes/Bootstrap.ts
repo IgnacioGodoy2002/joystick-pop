@@ -72,11 +72,18 @@ export default class Bootstrap extends Phaser.Scene
 	{
 		const suraConfig = getSuraConfig()
 
-		if (!suraConfig.isEmbedded)
-		{
-			return
-		}
-
+		// Antes se cortaba acá si isEmbedded daba false. El problema es que
+		// esa pregunta se respondía UNA sola vez, al arrancar: en el WebView
+		// nativo el juego corre top-level (window.parent === window) y el
+		// bridge window.ReactNativeWebView lo inyecta el host cuando la
+		// página terminó de cargar -- o sea, después. Si llegaba tarde, el
+		// juego ya se había declarado standalone para siempre: ni handshake,
+		// ni puntaje de ranking, ni pago de recompensas.
+		//
+		// Ahora el servicio se crea siempre (es sólo un listener de
+		// `message` más un par de timers) y es él el que decide, con los
+		// reintentos de MINIGAME_READY, si del otro lado hay alguien. Si no
+		// lo hay, se da por standalone solo (ver SuraIntegrationService).
 		const suraService = new SuraIntegrationService({
 			gameSlug: suraConfig.gameSlug,
 			version: suraConfig.version

@@ -6,6 +6,7 @@ import BallLayoutData, {
 
 import BallColor, { colorIsMatch } from './BallColor'
 import { Subject } from 'rxjs'
+import BallState from '~/consts/BallState'
 
 interface IGridPosition
 {
@@ -73,7 +74,10 @@ export default class BallGrid
 			return 0
 		}
 
-		return ball.y + ball.radius
+		// homeY y no y: si justo esta bola está en pleno jiggle, `y` está
+		// corrida unos píxeles y DescentController la usa como referencia
+		// frame a frame para mover TODA la grilla (ver handleBallsDestroyed)
+		return ball.homeY + ball.radius
 	}
 
 	constructor(scene: Phaser.Scene, pool: IStaticBallPool)
@@ -135,78 +139,44 @@ export default class BallGrid
 	 */
 	async attachBall(x: number, y: number, color: BallColor, gridBall: IBall, bvx: number, bvy: number)
 	{
-		const width = this.size.width
-		const radius = width * 0.5
+		const { row, col } = this.findRowAndColumns(gridBall)
 
-		const vel = new Phaser.Math.Vector2(bvx, bvy)
-		vel.normalize()
-
-		// the position on the ball in the direction it was heading
-		const hx = x + (vel.x * radius)
-
-		const cellX = gridBall.x
-		const cellY = gridBall.y
-
-		const dx = hx - cellX
-
-		let tx = dx <= 0 ? cellX - radius : cellX + radius
-
-		// offset by vertical interval
-		const interval = this.ballInterval
-		const dy = y - cellY
-		let ty = dy >= 0 ? cellY + interval : cellY - interval
-
-		// place on same row
-		const sameRow = Math.abs(dy) <= radius
-		if (sameRow)
+		if (row < 0 || col < 0)
 		{
-			ty = cellY
-			// adjust x to be next to
-			tx = dx <= 0 ? tx - radius : tx + radius
+			// La bola contra la que se chocó ya no está en la grilla (quedó
+			// como sprite huérfano de algún encastre fallido anterior). Si
+			// se siguiera adelante, el destino se calcularía contra
+			// row/col = -1 y terminaría en otro huérfano -- o sea, el bug se
+			// realimentaría tiro a tiro. Se la saca de circulación y se
+			// descarta el tiro.
+			console.warn('BallGrid.attachBall: la bola impactada no está en la grilla, se descarta')
+			this.pool.despawn(gridBall)
+			return
 		}
+
+		const target = this.findFreeCellAround(row, col, gridBall, x, y, bvx, bvy)
+
+		if (!target)
+		{
+			// Las 6 celdas hexagonales alrededor del impacto están ocupadas o
+			// caen fuera del tablero. No hay dónde encastrar: antes se
+			// insertaba igual encima de una celda ocupada (insertAt pisaba la
+			// entrada) y la bola pisada quedaba como sprite fantasma
+			// superpuesto para siempre. Mejor no materializar nada.
+			console.warn('BallGrid.attachBall: sin celda libre alrededor del impacto, se descarta el tiro')
+			return
+		}
+
+		const { row: bRow, col: bCol, x: tx, y: ty } = target
 
 		const newBall = this.pool.spawn(x, y)
 			.setColor(color)
 
-		const { row, col } = this.findRowAndColumns(gridBall)
-
-		let bRow = -1
-		if (sameRow)
+		if (!this.insertAt(bRow, bCol, newBall))
 		{
-			bRow = row
+			this.pool.despawn(newBall)
+			return
 		}
-		else
-		{
-			if (ty < cellY)
-			{
-				bRow = row - 1
-			}
-			else
-			{
-				bRow = row + 1
-			}
-		}
-
-		let bCol = -1
-
-		if (sameRow)
-		{
-			bCol = tx < cellX ? col - 1 : col + 1
-		}
-		else
-		{
-			const isStaggered = this.isRowStaggered(bRow)
-			if (isStaggered)
-			{
-				bCol = tx < cellX ? col : col + 1
-			}
-			else
-			{
-				bCol = tx < cellX ? col - 1 : col
-			}
-		}
-
-		this.insertAt(bRow, bCol, newBall)
 
 		const matches = this.findMatchesAt(bRow, bCol, color)
 		// minimum 3 matches required
@@ -216,6 +186,13 @@ export default class BallGrid
 			this.ballsAddedSubject.next(1)
 			this.ballAttachedSubject.next(newBall)
 			this.animateAttachBounceAt(bRow, bCol, tx, ty, newBall)
+
+			// Red de seguridad en el camino SIN combo, que es el 80% de los
+			// tiros y el que antes no revisaba absolutamente nada. Si por
+			// cualquier vía quedó una bola sin sostén o una celda
+			// desincronizada, se corrige acá en vez de arrastrarse hasta el
+			// final de la partida.
+			this.sweepStranded()
 			return
 		}
 
@@ -223,10 +200,14 @@ export default class BallGrid
 		// remove visually after animation below
 		// we want to remove from grid immediately so that other
 		// processes that add new rows can run normally
-		const matchedBalls = this.removeFromGrid(matches)
+		// `retire()` las marca como "muriéndose": siguen vivas en pantalla
+		// unos milisegundos terminando su animación, y sin esa marca la
+		// barrida de reconcile() las tomaría por sprites colgados y las
+		// mataría antes de tiempo
+		const matchedBalls = this.retire(this.removeFromGrid(matches))
 
 		const orphanPositions = this.findOrphanedBalls()
-		const orphans = this.removeFromGrid(orphanPositions)
+		const orphans = this.retire(this.removeFromGrid(orphanPositions))
 			.map(ball => {
 				ball.setActive(false)
 				this.scene.physics.world.remove(ball.body)
@@ -235,22 +216,44 @@ export default class BallGrid
 
 		this.cleanUpEmptyRows()
 
-		await new Promise(resolve => {
-			this.scene.tweens.add({
-				targets: newBall,
-				y: ty,
-				x: tx,
-				duration: 50,
-				ease: 'Back.easeOut',
-				onComplete: function () {
-					resolve()
-				}
-			})
+		// el viaje desde el punto de impacto hasta la celda se anima como
+		// offset respecto del home ya definitivo, no tweeneando x/y a
+		// absolutos: durante estos 50ms la grilla puede estar descendiendo
+		// (o retrocediendo por el combo recién hecho) y un tween absoluto
+		// aterrizaría en la posición que la celda tenía al empezar
+		const fromX = newBall.x - tx
+		const fromY = newBall.y - ty
+
+		newBall.setHome(tx, ty)
+		newBall.setVisualOffset(fromX, fromY)
+
+		const travel = this.scene.tweens.addCounter({
+			from: 0,
+			to: 1,
+			duration: 50,
+			ease: 'Back.easeOut',
+			onUpdate: (tween: Phaser.Tweens.Tween) => {
+				const p = tween.getValue()
+				newBall.setVisualOffset(fromX * (1 - p), fromY * (1 - p))
+			},
+			onComplete: () => {
+				newBall.setVisualOffset(0, 0)
+			}
 		})
 
-		const body = newBall.body as Phaser.Physics.Arcade.StaticBody
-		body.updateFromGameObject()
-		
+		newBall.setAnimationTween(travel)
+
+		// La espera va contra el reloj de la escena, NO contra el onComplete
+		// del tween: Phaser 3.22 no tiene callback onStop y `Tween.stop()`
+		// tampoco dispara onComplete (se limita a marcar PENDING_REMOVE).
+		// Si otro encastre simultáneo despawneara esta bola dentro de estos
+		// 50ms -- y el despawn ahora corta la animación -- el await nunca
+		// resolvería y el shooter se quedaría sin recargar: el juego entero
+		// congelado. El delayedCall resuelve igual pase lo que pase.
+		await new Promise(resolve => {
+			this.scene.time.delayedCall(50, resolve)
+		})
+
 		// remove matched balls
 		matchedBalls.forEach(ball => {
 			this.ballWillBeDestroyed.next(ball)
@@ -265,6 +268,164 @@ export default class BallGrid
 		{
 			await this.animateOrphans(orphans)
 		}
+
+		// misma red de seguridad que en el camino sin combo: acá recién
+		// terminaron de morirse las bolas del combo, así que es el momento
+		// en que la estructura y la pantalla tienen que volver a coincidir
+		this.reconcile()
+	}
+
+	/**
+	 * Marca bolas que ya salieron de la grilla y están terminando su
+	 * animación de destrucción, para que `reconcile()` no las confunda con
+	 * sprites colgados por un bug.
+	 */
+	private retire(balls: IBall[])
+	{
+		for (let i = 0; i < balls.length; ++i)
+		{
+			balls[i].retiring = true
+		}
+		return balls
+	}
+
+	/**
+	 * Reconcilia la estructura de la grilla con lo que realmente hay vivo en
+	 * pantalla. Corrige las DOS formas en que pueden desincronizarse, que
+	 * son las que producen el síntoma de "bolas flotando en el aire":
+	 *
+	 *  - ZOMBI: la grilla referencia una bola cuyo sprite ya está muerto u
+	 *    oculto. La celda cuenta como ocupada y como sostén para el cálculo
+	 *    de huérfanas, pero en pantalla no hay nada -- así que todo lo que
+	 *    cuelga de ella se ve flotando, y además esa celda bloquea encastres.
+	 *
+	 *  - FANTASMA: un sprite vivo que la grilla no conoce. No se puede
+	 *    emparejar ni destruir, nunca cae aunque se quede sin sostén, y sigue
+	 *    siendo colisionable, así que desvía tiros contra la nada.
+	 *
+	 * Es deliberadamente una red de seguridad y no un reemplazo de la lógica
+	 * correcta: cada desincronización que arregla es un bug en otro lado. Si
+	 * alguna vez devuelve > 0 de forma sostenida, hay que ir a buscar la
+	 * causa, no dejarlo tapando. Se puso porque el síntoma estaba reportado
+	 * en producción por usuarios reales y no se pudo reproducir en
+	 * laboratorio: con esto, aunque alguna ruta no prevista desincronice el
+	 * tablero, se repara solo en el tiro siguiente en vez de quedar roto el
+	 * resto de la partida.
+	 */
+	reconcile()
+	{
+		let healed = 0
+
+		// --- zombis ---
+		for (let r = 0; r < this.grid.length; ++r)
+		{
+			const list = this.grid[r]
+			for (let c = 0; c < list.length; ++c)
+			{
+				const ball = list[c]
+				if (ball && (!ball.active || !ball.visible))
+				{
+					list[c] = undefined
+					healed += 1
+				}
+			}
+		}
+
+		// --- fantasmas ---
+		const known = new Set<IBall>()
+		this.grid.forEach(list => list.forEach(b => { if (b) { known.add(b) } }))
+
+		const children = this.pool.getChildren()
+		for (let i = 0; i < children.length; ++i)
+		{
+			const ball = children[i] as IBall
+
+			if (!ball.active || !ball.visible)
+			{
+				continue
+			}
+
+			if (known.has(ball) || ball.retiring)
+			{
+				continue
+			}
+
+			this.pool.despawn(ball)
+			healed += 1
+		}
+
+		if (healed > 0)
+		{
+			console.warn(`BallGrid.reconcile: ${healed} celda(s) desincronizada(s) reparada(s)`)
+			this.pruneEmptyTopRows()
+			this.cleanUpEmptyRows()
+		}
+
+		return healed
+	}
+
+	/**
+	 * Red de seguridad que corre después de CADA encastre, no sólo cuando
+	 * hubo combo. Antes el cálculo de huérfanas sólo se disparaba al explotar
+	 * 3+ bolas; si alguna bola quedaba descolgada por cualquier otra vía, se
+	 * quedaba flotando en el aire hasta el final de la partida. Ahora se
+	 * reconcilia la estructura y se tira todo lo que no esté colgando del
+	 * techo, tiro a tiro. Si no hay nada que corregir no hace nada: el costo
+	 * es un recorrido del tablero (~100-200 bolas), despreciable.
+	 */
+	private sweepStranded()
+	{
+		this.reconcile()
+
+		const positions = this.findOrphanedBalls()
+
+		if (positions.length <= 0)
+		{
+			return
+		}
+
+		console.warn(`BallGrid.sweepStranded: ${positions.length} bola(s) sin sostén, se las tira`)
+
+		const orphans = this.retire(this.removeFromGrid(positions))
+			.map(ball => {
+				ball.setActive(false)
+				this.scene.physics.world.remove(ball.body)
+				return ball
+			})
+
+		this.cleanUpEmptyRows()
+
+		this.ballsDestroyedSubject.next(orphans.length)
+		this.ballsCount -= orphans.length
+
+		// sin await a propósito: esto es una corrección de fondo, no tiene
+		// que bloquear la recarga del shooter. El catch es obligatorio
+		// justamente por eso: una promesa suelta que rechace sería un
+		// unhandled rejection, y acá no hay a quién propagarle el error.
+		this.animateOrphans(orphans).catch(err => {
+			console.error('BallGrid.sweepStranded: falló la caída de huérfanas', err)
+		})
+	}
+
+	/**
+	 * Planta todas las bolas en su posición canónica, cortando cualquier
+	 * animación en curso. Se llama justo antes de pausar la escena por game
+	 * over: al pausarla su TweenManager deja de correr, así que un rebote o
+	 * un jiggle que estuviera arrancando queda congelado a mitad de camino
+	 * -- hasta ~20px fuera de su celda -- y el tablero de fondo de la
+	 * pantalla de Game Over se ve con bolas corridas/encimadas.
+	 */
+	settleAll()
+	{
+		const balls = this.pool.getChildren()
+		for (let i = 0; i < balls.length; ++i)
+		{
+			const b = balls[i] as IBall
+			b.stopAnimation()
+			b.setVisualOffset(0, 0)
+		}
+
+		return this
 	}
 
 	generate(rows = 6)
@@ -294,10 +455,11 @@ export default class BallGrid
 		for (let i = 0; i < count; ++i)
 		{
 			const b = balls[i] as IBall
-			b.y += dy
 
-			const body = b.body as Phaser.Physics.Arcade.StaticBody
-			body.updateFromGameObject()
+			// mueve el home preservando el offset de animación, así una bola
+			// en pleno rebote/jiggle acompaña el descenso en vez de quedarse
+			// clavada donde estaba cuando arrancó el tween
+			b.moveHomeBy(0, dy)
 		}
 
 		return this
@@ -335,6 +497,15 @@ export default class BallGrid
 
 		const count = row.length
 
+		// Una fila que se vació entera (match que se llevó todas sus bolas)
+		// quedaba igual en la estructura: cleanUpEmptyRows sólo poda desde
+		// abajo. Si esa fila fantasma quedaba arriba de todo, la fila nueva
+		// se anclaba contra ella, no encontraba ninguna bola de referencia y
+		// se dibujaba en y = 0, encimada sobre la grilla real. Podarlas
+		// también desde arriba además devuelve a la fila 0 su rol de raíz
+		// para el cálculo de huérfanas.
+		this.pruneEmptyTopRows()
+
 		const gridRow = new RowList()
 		this.grid.unshift(gridRow)
 
@@ -350,10 +521,20 @@ export default class BallGrid
 		{
 			const rowList = this.grid[1] as RowList
 			gridRow.isStaggered = !rowList.isStaggered
-			const anyItem = rowList.find(n => n)
-			if (anyItem)
+
+			// Se busca la primera fila con bolas y se descuenta un intervalo
+			// por cada fila intermedia, en vez de asumir que la de arriba de
+			// todo siempre tiene alguna.
+			for (let i = 1; i < this.grid.length; ++i)
 			{
-				y = anyItem.y - verticalInterval
+				const anyItem = this.grid[i].find(n => n)
+				if (anyItem)
+				{
+					// homeY: si la bola de referencia está animándose, su `y`
+					// está corrida y la fila nueva entera nacería desalineada
+					y = anyItem.homeY - (i * verticalInterval)
+					break
+				}
 			}
 		}
 		
@@ -431,16 +612,22 @@ export default class BallGrid
 		const bottom = this.scene.scale.height * 0.9
 
 		const tasks = orphans.map(orphan => {
-			const y = orphan.y
-			const dy = bottom - y
+			const dy = bottom - orphan.homeY
 			const duration = dy * 0.75
 
 			return new Promise(resolve => {
 				timeline.add({
-					targets: orphan,
-					y: y + dy,
+					// la caída también como offset: estas bolas siguen en el
+					// pool y por lo tanto `moveBy` les sigue tocando el home
+					// mientras caen (la grilla está retrocediendo justo en
+					// ese momento, por el combo que las dejó huérfanas)
+					targets: { value: 0 },
+					value: dy,
 					offset: 0,
 					duration,
+					onUpdate: function (tween: Phaser.Tweens.Tween, target: { value: number }) {
+						orphan.setVisualOffset(0, target.value)
+					},
 					onComplete: function () {
 						// @ts-ignore
 						this.ballWillBeDestroyed.next(orphan)
@@ -461,35 +648,48 @@ export default class BallGrid
 		await Promise.all(tasks)
 	}
 
+	/**
+	 * Rebote de encastre. El home se fija de entrada en la celda destino y
+	 * todo el movimiento se anima como OFFSET respecto de él (ver
+	 * Ball.setVisualOffset): así la bola acompaña el descenso de la grilla
+	 * mientras rebota, en vez de aterrizar en las coordenadas que la celda
+	 * tenía 200ms antes.
+	 */
 	private animateAttachBounceAt(row: number, col: number, tx: number, ty: number, newBall: IBall)
 	{
+		const fromX = newBall.x - tx
+		const fromY = newBall.y - ty
+
+		newBall.setHome(tx, ty)
+		newBall.setVisualOffset(fromX, fromY)
+
 		// https://github.com/photonstorm/phaser/blob/v3.22.0/src/math/easing/EaseMap.js
-		const timeline = this.scene.tweens.createTimeline()
-		timeline.add({
-			targets: newBall,
-			y: ty - 5,
-			duration: 50
-		})
+		const overshoot = -5
 
-		timeline.add({
-			targets: newBall,
-			x: tx,
+		const bounce = this.scene.tweens.addCounter({
+			from: 0,
+			to: 1,
 			duration: 100,
-			offset: 0
-		})
+			onUpdate: (tween: Phaser.Tweens.Tween) => {
+				const p = tween.getValue()
 
-		timeline.add({
-			targets: newBall,
-			y: ty,
-			duration: 50,
-			ease: 'Back.easeOut',
+				// x avanza linealmente durante los 100ms completos
+				const ox = fromX * (1 - p)
+
+				// y va primero al overshoot (0 -> 0.5) y después vuelve a 0
+				// con Back.easeOut (0.5 -> 1), igual que la timeline original
+				const oy = p < 0.5
+					? Phaser.Math.Linear(fromY, overshoot, p / 0.5)
+					: Phaser.Math.Linear(overshoot, 0, Phaser.Math.Easing.Back.Out((p - 0.5) / 0.5))
+
+				newBall.setVisualOffset(ox, oy)
+			},
 			onComplete: () => {
-				const body = newBall.body as Phaser.Physics.Arcade.StaticBody
-				body.updateFromGameObject()
+				newBall.setVisualOffset(0, 0)
 			}
 		})
 
-		timeline.play()
+		newBall.setAnimationTween(bounce)
 
 		this.jiggleNeighbors(row, col)
 	}
@@ -519,12 +719,21 @@ export default class BallGrid
 		}
 	}
 
+	/**
+	 * Devuelve `true` sólo si la bola quedó efectivamente en la grilla. Antes
+	 * no devolvía nada y, peor, escribía `rowList[col] = ball` sin mirar si
+	 * la celda ya estaba ocupada: la bola anterior desaparecía de la
+	 * estructura de datos pero seguía existiendo como sprite activo en el
+	 * pool, superpuesta a la nueva y ya sin forma de volver a emparejarse ni
+	 * de destruirse. Ésa era la causa de las bolas superpuestas. Ahora el
+	 * que llama tiene que hacerse cargo del `false` (ver attachBall).
+	 */
 	private insertAt(row: number, col: number, ball: IBall)
 	{
 		if (row < 0 || col < 0)
 		{
 			console.error(`BallGrid.insertAt: posición inválida row=${row} col=${col}, se ignora la inserción`)
-			return
+			return false
 		}
 
 		if (row >= this.grid.length)
@@ -533,8 +742,11 @@ export default class BallGrid
 			for (let i = 0; i < count; ++i)
 			{
 				const rowList = new RowList()
-				const prevRow = this.grid[row + i - 1] as RowList
-				rowList.isStaggered = !prevRow.isStaggered
+				// siempre contra la última fila REAL del momento -- tomar
+				// `grid[row + i - 1]` daba undefined apenas había que crear
+				// más de una fila de golpe
+				const prevRow = this.grid[this.grid.length - 1] as RowList
+				rowList.isStaggered = prevRow ? !prevRow.isStaggered : true
 				this.grid.push(rowList)
 			}
 		}
@@ -544,7 +756,7 @@ export default class BallGrid
 		if (!rowList)
 		{
 			console.error(`BallGrid.insertAt: la fila row=${row} no existe, se ignora la inserción`)
-			return
+			return false
 		}
 
 		for (let i = 0; i <= col; ++i)
@@ -555,7 +767,118 @@ export default class BallGrid
 			}
 		}
 
+		if (rowList[col])
+		{
+			console.error(`BallGrid.insertAt: la celda row=${row} col=${col} ya está ocupada, se ignora la inserción`)
+			return false
+		}
+
 		rowList[col] = ball
+
+		return true
+	}
+
+	/**
+	 * Elige en cuál de las 6 celdas hexagonales que rodean a `gridBall` entra
+	 * la bola recién disparada: la LIBRE más cercana al punto de impacto,
+	 * proyectado un radio hacia adelante en la dirección en la que venía.
+	 *
+	 * Antes el destino se deducía sólo de la geometría del impacto (de qué
+	 * lado y a qué altura pegó), sin mirar si esa celda estaba libre. Cuando
+	 * no lo estaba -- caso facilísimo de provocar: rozar el costado de una
+	 * bola en el medio de una fila llena cae en la rama `sameRow` y apunta a
+	 * una celda que casi seguro tiene dueño -- la bola nueva se dibujaba
+	 * encima de la vieja. De ahí las bolas superpuestas de los reportes.
+	 *
+	 * Las posiciones en pantalla se derivan de `gridBall`, no se recalculan
+	 * desde cero, así que la celda elegida y las coordenadas devueltas no
+	 * pueden quedar desfasadas entre sí.
+	 */
+	private findFreeCellAround(row: number, col: number, gridBall: IBall, x: number, y: number, bvx: number, bvy: number)
+	{
+		const width = this.size.width
+		const radius = width * 0.5
+		const interval = this.ballInterval
+
+		// posición CANÓNICA de la bola impactada, no la visual: si está en
+		// pleno jiggle (cosa muy común -- cada encastre sacude a sus vecinas
+		// durante 100ms), su `y` está corrida y el destino que se derive de
+		// ella hereda esa corrida como error PERMANENTE. Tiro a tiro eso se
+		// acumula y termina encimando filas.
+		const cellX = gridBall.homeX
+		const cellY = gridBall.homeY
+
+		const vel = new Phaser.Math.Vector2(bvx, bvy)
+		if (vel.lengthSq() > 0)
+		{
+			vel.normalize()
+		}
+
+		const hx = x + (vel.x * radius)
+		const hy = y + (vel.y * radius)
+
+		const hex = this.getHexNeighborPositions(row, col)
+
+		const candidates = [
+			{ row: hex.left.row, col: hex.left.col, x: cellX - width, y: cellY },
+			{ row: hex.right.row, col: hex.right.col, x: cellX + width, y: cellY },
+			{ row: hex.topLeft.row, col: hex.topLeft.col, x: cellX - radius, y: cellY - interval },
+			{ row: hex.topRight.row, col: hex.topRight.col, x: cellX + radius, y: cellY - interval },
+			{ row: hex.bottomLeft.row, col: hex.bottomLeft.col, x: cellX - radius, y: cellY + interval },
+			{ row: hex.bottomRight.row, col: hex.bottomRight.col, x: cellX + radius, y: cellY + interval }
+		]
+
+		const sceneWidth = this.scene.scale.width
+
+		let best: typeof candidates[0] | null = null
+		let bestDistance = Number.MAX_VALUE
+
+		for (let i = 0; i < candidates.length; ++i)
+		{
+			const candidate = candidates[i]
+
+			// row < 0 sería una fila arriba de la primera, que no existe y no
+			// se puede crear (la grilla crece hacia abajo desde su tope)
+			if (candidate.row < 0 || candidate.col < 0)
+			{
+				continue
+			}
+
+			// Una celda que no entra ENTERA en el tablero no es una celda:
+			// son los huecos de relleno que cada fila deja en una punta para
+			// alinear el hexágono (ver addRowToFront). Están libres en la
+			// estructura, pero poner una bola ahí la deja medio afuera de la
+			// pantalla Y encimada con la fila de al lado. Un tiro sin destino
+			// válido se descarta; es preferible a materializar una
+			// superposición.
+			//
+			// El margen es el RADIO, no 0: con el criterio viejo (centro
+			// dentro de la pantalla) el hueco de relleno de una punta pasaba
+			// el filtro por poco y la bola quedaba medio cortada contra el
+			// borde -- justo lo que se ve en las capturas del reporte. El
+			// epsilon de 1px absorbe el redondeo de la aritmética flotante
+			// del centrado, que deja la primera/última celda legítima
+			// exactamente sobre el límite.
+			if (candidate.x < radius - 1 || candidate.x > sceneWidth - radius + 1)
+			{
+				continue
+			}
+
+			if (this.getAt(candidate.row, candidate.col))
+			{
+				continue
+			}
+
+			const distance = Phaser.Math.Distance.Squared(hx, hy, candidate.x, candidate.y)
+
+			if (distance < bestDistance)
+			{
+				bestDistance = distance
+				best = candidate
+			}
+		}
+
+		return best
 	}
 
 	private getAt(row: number, col: number)
@@ -576,16 +899,26 @@ export default class BallGrid
 
 	private findOrphanedBalls()
 	{
+		// La raíz es la primera fila CON bolas, no la fila 0 a secas: si un
+		// match vació la fila de arriba, tomar el índice 0 a ciegas dejaba
+		// cero raíces y hacía caer el tablero entero como huérfano.
+		const rootRow = this.grid.findIndex(list => list.some(n => n))
+
+		if (rootRow < 0)
+		{
+			return []
+		}
+
 		// find all connected balls starting from the top row
 		const connected = new Set<IBall>()
-		const rootPositions = this.grid[0]
+		const rootPositions = this.grid[rootRow]
 			.map((n, idx) => { 
 				if (!n)
 				{
 					return undefined
 				}
 				connected.add(n)
-				return { row: 0, col: idx }
+				return { row: rootRow, col: idx }
 			})
 			.filter(n => n) as IGridPosition[]
 
@@ -594,10 +927,10 @@ export default class BallGrid
 		})
 
 		// any balls that are NOT in the connected set are orphaned
-		// ignore the root row at index 0; they can never be "orphaned"
+		// ignore the root row; they can never be "orphaned"
 		const orphans: IGridPosition[] = []
 		const count = this.grid.length
-		for (let row = 1; row < count; ++row)
+		for (let row = rootRow + 1; row < count; ++row)
 		{
 			const list = this.grid[row]
 			for (let col = 0; col < list.length; ++col)
@@ -776,25 +1109,35 @@ export default class BallGrid
 
 				const factor = (size - i) / size
 				const movement = 10 * factor
-				
 
-				const timeline = this.scene.tweens.createTimeline()
-				const y = ball.y
-				
-				timeline.add({
-					targets: ball,
-					y: y - movement,
-					duration: 50
+				// La sacudida va como OFFSET visual, nunca tweeneando `y`.
+				// Con el tween absoluto que había acá, los 100ms de jiggle
+				// le pisaban la `y` a la bola en cada frame con el valor
+				// capturado al empezar -- o sea, descartaban todo el
+				// descenso (o el retroceso por combo, de hasta 30px) que
+				// ocurriera durante la animación. La bola volvía a "su"
+				// posición vieja y quedaba desfasada del resto de su fila
+				// para siempre. Cada encastre sacude hasta ~8 vecinas, así
+				// que el error se repartía por todo el tablero y crecía tiro
+				// a tiro: ésa es la superposición que se seguía viendo.
+				const jiggle = this.scene.tweens.addCounter({
+					from: 0,
+					to: 1,
+					duration: 100,
+					onUpdate: (tween: Phaser.Tweens.Tween) => {
+						const p = tween.getValue()
+						const oy = p < 0.5
+							? Phaser.Math.Linear(0, -movement, p / 0.5)
+							: Phaser.Math.Linear(-movement, 0, Phaser.Math.Easing.Back.Out((p - 0.5) / 0.5))
+
+						ball.setVisualOffset(0, oy)
+					},
+					onComplete: () => {
+						ball.setVisualOffset(0, 0)
+					}
 				})
 
-				timeline.add({
-					targets: ball,
-					y,
-					duration: 50,
-					ease: 'Back.easeOut'
-				})
-
-				timeline.play()
+				ball.setAnimationTween(jiggle)
 			}
 		}
 	}
@@ -835,18 +1178,33 @@ export default class BallGrid
 		return positions
 	}
 
+	// Las filas alternan parity por construcción (ver addRowToFront e
+	// insertAt), así que para una fila que todavía no existe alcanza con
+	// invertir la de al lado. La versión anterior entraba a esa rama también
+	// para la ÚLTIMA fila real y leía `grid[row - 1]` -- con una grilla de
+	// una sola fila eso era `grid[-1]`, undefined, y tiraba excepción.
 	private isRowStaggered(row: number)
 	{
-		if (row >= this.grid.length - 1)
+		const rowList = this.grid[row] as RowList
+		if (rowList)
 		{
-			// if asking about a row that has not been created yet
-			// check row above and invert
-			const rowList = this.grid[row - 1] as RowList	
-			return !rowList.isStaggered
+			return rowList.isStaggered
 		}
 
-		const rowList = this.grid[row] as RowList
-		return rowList.isStaggered
+		const above = this.grid[row - 1] as RowList
+		if (above)
+		{
+			return !above.isStaggered
+		}
+
+		const below = this.grid[row + 1] as RowList
+		if (below)
+		{
+			return !below.isStaggered
+		}
+
+		// grilla vacía: mismo default que usa addRowToFront para la primera fila
+		return true
 	}
 
 	private getHexNeighborPositions(row: number, col: number)
@@ -947,7 +1305,10 @@ export default class BallGrid
 						continue
 					}
 
-					const distSq = Phaser.Math.Distance.Squared(ball.x, ball.y, neighbor.x, neighbor.y)
+					// la bola en vuelo sí va por x/y (es su posición real),
+					// pero la de la grilla por home: un vecino en pleno
+					// jiggle no debe mover el umbral de este chequeo
+					const distSq = Phaser.Math.Distance.Squared(ball.x, ball.y, neighbor.homeX, neighbor.homeY)
 					if (distSq <= thresholdSq)
 					{
 						return neighbor
@@ -957,6 +1318,18 @@ export default class BallGrid
 		}
 
 		return null
+	}
+
+	// Contraparte de cleanUpEmptyRows (que poda desde abajo): saca las filas
+	// que quedaron sin ninguna bola desde arriba. No mueve nada en pantalla
+	// -- esas filas ya no tienen sprites -- sólo deja de contarlas como
+	// filas de la grilla.
+	private pruneEmptyTopRows()
+	{
+		while (this.grid.length > 0 && !this.grid[0].find(n => n))
+		{
+			this.grid.shift()
+		}
 	}
 
 	private cleanUpEmptyRows()

@@ -9,6 +9,9 @@ interface LeaderboardFetchParams
 {
 	gameId?: string | null
 	apiBaseUrl?: string | null
+	// Corriendo dentro de SURA (iframe web o WebView nativo). Cambia qué pasa
+	// cuando el fetch no se puede hacer o falla -- ver abajo.
+	embedded?: boolean
 }
 
 interface ApiLeaderboardEntry
@@ -25,6 +28,20 @@ interface ApiLeaderboardResponse
 	}
 }
 
+/**
+ * Con señal mala el fetch se queda colgado indefinidamente y la pantalla no
+ * sale nunca de "Cargando...". Pasado este tiempo se aborta y se muestra el
+ * error.
+ */
+const FETCH_TIMEOUT_MS = 8000
+
+/**
+ * SÓLO para la versión suelta (standalone), que no tiene backend contra el
+ * cual pedir nada. Embebido en SURA esta lista NO se usa nunca: mostrar
+ * nombres inventados como si fueran el ranking real es peor que mostrar un
+ * error -- de hecho es exactamente lo que se veía en mobile como "el ranking
+ * cargó mal" cuando el handshake fallaba.
+ */
 const MOCK_LEADERBOARD: LeaderboardEntry[] = [
 	{ rank: 1, alias: 'BubblePopper99', score: 15420 },
 	{ rank: 2, alias: 'JoyStickJoe', score: 14890 },
@@ -38,28 +55,54 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
 	{ rank: 10, alias: 'LuckyPop', score: 7650 }
 ]
 
+const fetchWithTimeout = async (url: string) => {
+	// AbortController existe en todos los WebViews que nos importan, pero si
+	// faltara igual conviene pedir el recurso sin timeout antes que romper.
+	if (typeof AbortController === 'undefined')
+	{
+		return fetch(url)
+	}
+
+	const controller = new AbortController()
+	const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+	try
+	{
+		return await fetch(url, { signal: controller.signal })
+	}
+	finally
+	{
+		clearTimeout(timer)
+	}
+}
+
 /**
  * Leaderboard real de la partida, vía el endpoint público (sin auth) de
  * Sura: GET {apiBaseUrl}/minigames/v1/games/{gameId}/leaderboard.
  *
  * gameId y apiBaseUrl vienen del payload de INIT_GAME (ver
  * SuraIntegrationService.getGameId/getApiBaseUrl) -- Leaderboard.ts los lee
- * del registry y los pasa acá. Sin sesión SURA (standalone, o antes de que
- * el handshake termine) cae al listado mock de siempre.
+ * del registry y los pasa acá.
+ *
+ * Devuelve `null` cuando el ranking real no se pudo traer estando embebido:
+ * el que llama muestra un error, nunca datos de relleno.
  */
-const fetchLeaderboard = async (params?: LeaderboardFetchParams): Promise<LeaderboardEntry[]> => {
+const fetchLeaderboard = async (params?: LeaderboardFetchParams): Promise<LeaderboardEntry[] | null> => {
 	if (!params?.gameId || !params?.apiBaseUrl)
 	{
-		return MOCK_LEADERBOARD
+		// Sin handshake no hay a quién preguntarle. Embebido eso es un fallo
+		// real (el host tendría que haber mandado INIT_GAME); suelto es el
+		// modo normal de la build standalone.
+		return params?.embedded ? null : MOCK_LEADERBOARD
 	}
 
 	try
 	{
-		const response = await fetch(`${params.apiBaseUrl}/minigames/v1/games/${params.gameId}/leaderboard?per_page=12`)
+		const response = await fetchWithTimeout(`${params.apiBaseUrl}/minigames/v1/games/${params.gameId}/leaderboard?per_page=12`)
 
 		if (!response.ok)
 		{
-			return MOCK_LEADERBOARD
+			return params.embedded ? null : MOCK_LEADERBOARD
 		}
 
 		const body = await response.json() as ApiLeaderboardResponse
@@ -74,7 +117,7 @@ const fetchLeaderboard = async (params?: LeaderboardFetchParams): Promise<Leader
 	}
 	catch
 	{
-		return MOCK_LEADERBOARD
+		return params.embedded ? null : MOCK_LEADERBOARD
 	}
 }
 

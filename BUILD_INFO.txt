@@ -1,0 +1,142 @@
+Joystick Pop — Build Info
+=========================
+
+Versión:   1.4.1
+Fecha:     2026-10-22
+Commit:    n/a (entrega sin repo git)
+Rama:      n/a
+
+Modo:      RUNTIME (embebido siempre es "sura", nunca "standalone")
+           -- ver BUILD_INFO de 1.1.0 para el detalle de esa migración.
+
+Novedades v1.4.1 (sobre 1.4.0) — build de correcciones, sin cambios
+de contenido ni de arte:
+
+  1) El ranking no cargaba y las recompensas no se pagaban en la app
+     mobile (en web sí andaban). Una sola causa raíz.
+
+     En la WebView nativa el juego corre top-level, o sea
+     window.parent === window: todos los mensajes salientes se iban
+     por window.parent.postMessage() y el juego se los mandaba a sí
+     mismo. El host nunca se enteraba de nada. Sin handshake no hay
+     gameId/apiBaseUrl (el ranking caía al listado de relleno, que es
+     lo que se veía como "cargó mal") y el GAME_COMPLETE no salía
+     nunca (por eso no se acreditaba la recompensa). En web funciona
+     porque ahí sí existe un iframe de verdad.
+
+     - Transporte dual: cuando existe window.ReactNativeWebView se usa
+       ese puente, serializando con JSON (RN sólo transporta strings).
+       La elección de canal se hace en CADA envío, no una vez al
+       arrancar.
+     - Los mensajes del host se escuchan también en `document`
+       (Android RN los inyecta ahí, no en window) y se parsea el JSON
+       de entrada.
+     - MINIGAME_SESSION_ACCEPTED y GAME_COMPLETE ya no esperan a
+       conocer el origen del host: en nativo no hay origen, y esa
+       condición los dejaba mudos.
+     - Un envío que falla ya no propaga la excepción: una que reventara
+       al acusar recibo cortaba el handshake por la mitad.
+     - MINIGAME_READY se reintenta cada 600 ms hasta que llega el
+       INIT_GAME. El bridge del host se inyecta DESPUÉS de que la
+       página carga, así que un único READY al arrancar se perdía
+       siempre.
+     - La detección de "embebido" dejó de ser una decisión única de
+       arranque. Antes se evaluaba en Bootstrap y, como el bridge
+       nativo todavía no existía, el juego se declaraba standalone
+       para siempre y ni siquiera creaba la integración. Ahora el
+       servicio se crea siempre y se da por standalone recién si a los
+       3 s no hay ni iframe ni bridge.
+     - Quien espera la sesión y se registra tarde se ejecuta en el
+       acto (en mobile el host puede contestar antes de que la
+       pantalla que lo necesita exista).
+
+  2) Ranking: embebido ya nunca cae al listado de relleno.
+
+     Esos alias inventados (BubblePopper99, JoyStickJoe…) eran
+     justamente lo que se veía como "cargó mal". Ahora, si no se pudo
+     traer el ranking real, se muestra "No se pudo cargar el ranking"
+     (texto nuevo en es/en/pt). El listado local queda SÓLO para la
+     build suelta, que no tiene backend contra el cual pedir nada.
+     Se agregó además timeout de 8 s al fetch (con señal mala quedaba
+     colgado para siempre) y 10 s de tope al handshake.
+
+  3) Bolas que se superponían (bug reportado con capturas).
+
+     Al encastrar, la celda destino se deducía sólo de la geometría
+     del impacto, sin mirar si estaba libre, y la inserción pisaba la
+     celda sin chequear. La bola pisada desaparecía de la estructura
+     de datos pero seguía viva en pantalla: encimada, y ya sin forma
+     de emparejarse ni de destruirse. El caso fácil de provocar es
+     rozar el costado de una bola en medio de una fila llena.
+
+     Peor todavía, esa bola fantasma seguía siendo colisionable: el
+     siguiente tiro contra ella no la encontraba en la grilla y
+     generaba otra. Se realimentaba tiro a tiro, que es por qué en las
+     capturas la superposición iba creciendo.
+
+     - Ahora se elige la celda hexagonal LIBRE más cercana al impacto,
+       derivando las posiciones de la bola golpeada (así la celda y las
+       coordenadas no pueden quedar desfasadas entre sí). Se descartan
+       las celdas cuyo centro cae fuera del tablero.
+     - La inserción nunca pisa una celda ocupada; si no hay destino
+       válido, el tiro se descarta en vez de materializar una
+       superposición.
+     - Una fila que se vaciaba entera quedaba igual en la estructura y
+       hacía que la fila nueva se dibujara en y = 0, encimada sobre la
+       grilla real. Ahora se podan también desde arriba y la altura se
+       ancla contra la primera fila con bolas.
+     - El cálculo de bolas huérfanas se enraiza en la primera fila con
+       bolas: con la fila de arriba vacía se quedaba sin raíces y caía
+       el tablero entero.
+     - Dos fallas latentes que tiraban excepción en casos borde
+       (grilla de una sola fila, creación de varias filas de golpe).
+
+Cambios de build en esta versión:
+  - Ninguno. Mismo pipeline de Parcel que 1.4.0:
+        parcel build src/index.html --out-dir dist --public-url ./
+  - Sin assets nuevos ni borrados. El único archivo que cambia de hash
+    es el bundle JS (main.04a1996e.js -> main.5021ca6c.js); CSS,
+    imágenes, audio y favicons quedan idénticos a 1.4.0.
+
+Empaquetado (según spec de integración SURA, §8):
+  - index.html en la raíz del ZIP, rutas relativas -- verificado, sin
+    "/" líder en ningún href/src.
+  - Extensiones presentes en este build: html, css, js, map, ico, png,
+    jpg, ogg, webp.
+  - OJO (sigue vigente desde 1.4.0): "webp" (web-background.webp, el
+    fondo de escritorio) NO figuraba en el allowlist documentado del
+    CDN de Sura. Para publicación web común no hay problema; antes de
+    subir este ZIP al backoffice conviene confirmar que .webp esté
+    permitido, o convertir ese fondo a .jpg.
+
+Verificación de esta build (Playwright, Chromium; desktop 900×900 y
+iPhone 14):
+
+  Integración SURA — 5 escenarios, sin backend real:
+  - Nativo (ReactNativeWebView presente desde el arranque, INIT_GAME
+    inyectado como string JSON y despachado sobre document).
+  - Nativo con el bridge del host inyectado TARDE (2,5 s): el juego
+    reintenta READY mientras el bridge no existe y el handshake se
+    completa igual. Es el caso que reproducía el bug real.
+  - API del ranking devolviendo 500 -> se muestra el error, no el
+    listado de relleno.
+  - API del ranking que nunca responde -> corta a los 8 s y muestra el
+    error.
+  - Iframe web, como control de regresión.
+  En los tres escenarios con host: secuencia completa
+  MINIGAME_READY -> MINIGAME_SESSION_ACCEPTED -> MINIGAME_STARTED ->
+  GAME_COMPLETE (plano, con sessionId y score correctos) y ranking con
+  los datos reales de la API, nunca el mock.
+
+  Grilla — invariante de tablero comprobado sobre el juego corriendo:
+  cero sprites fuera de la estructura de la grilla y separación mínima
+  entre bolas de 0,92-0,94x el ancho de bola (la separación nominal
+  entre filas alternadas es 0,943x), después de 7 encastres forzados
+  contra la misma bola desde los 6 lados y 40 tiros reales. Antes del
+  fix el mismo chequeo daba bolas a 0,50x, o sea superpuestas.
+
+Cómo usar esta build:
+  - Servir el contenido del zip con cualquier servidor HTTP estático
+    (ej: npx serve, o python -m http.server).
+  - Abierta suelta en una pestaña (no embebida) sigue andando en modo
+    standalone, con el leaderboard local de siempre.

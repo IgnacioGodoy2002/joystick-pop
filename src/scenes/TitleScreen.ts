@@ -3,8 +3,15 @@ import SceneKeys from '~/consts/SceneKeys'
 import MusicController from '~/game/MusicController'
 import {CharacterStage, CHARACTERS, selectedCharacter, saveCharacter, CharacterId} from '~/characters/CharacterStage'
 import {i18next, USER_LANGUAGE_STORAGE_KEY} from '~/i18n'
-import {STORAGE_KEY_RECORD} from '~/integration/sura/SuraIntegrationService'
+import SuraIntegrationService, {STORAGE_KEY_RECORD} from '~/integration/sura/SuraIntegrationService'
 import '../styles/character-menu.css'
+// La version sale de package.json, no de una constante aparte: una constante
+// se olvida de actualizar y el sello mentiria, que es justo lo contrario de
+// para que esta. Se muestra en el menu para poder saber de un vistazo QUE
+// build esta corriendo -- hizo falta porque una correccion ya entregada
+// estuvo semanas sin llegar a los usuarios (el host servia el bundle viejo)
+// y desde afuera no habia forma de notarlo.
+import pkg from '../../package.json'
 export default class TitleScreen extends Phaser.Scene {
  private host?:HTMLElement;private stage?:CharacterStage;private selected=selectedCharacter();private keyHandler?: (e:KeyboardEvent)=>void;
  create(){
@@ -12,8 +19,17 @@ export default class TitleScreen extends Phaser.Scene {
   const lang=i18next.language.slice(0,2);const es=lang!=='en'&&lang!=='pt';const pt=lang==='pt';
   const txt={choose:es?'ELEGÍ TU PERSONAJE':pt?'ESCOLHA SEU PERSONAGEM':'CHOOSE YOUR CHARACTER',play:es?'JUGAR':pt?'JOGAR':'PLAY',how:es?'Cómo jugar':pt?'Como jogar':'How to play',rank:es?'Ranking':pt?'Ranking':'Leaderboard',rotate:es?'Girar':pt?'Girar':'Rotate',hint:es?'Mantené presionado para apuntar. Soltá para disparar.':pt?'Segure para mirar. Solte para disparar.':'Hold to aim. Release to shoot.',rule:es?'Uní 3 del mismo color y sumá puntos.':pt?'Combine 3 da mesma cor e ganhe pontos.':'Match 3 of the same color and score points.',record:es?'TU RÉCORD':pt?'SEU RECORDE':'YOUR BEST'};
   const host=document.createElement('section');host.className='pop-menu';host.setAttribute('aria-label','Menú Joystick Pop');this.host=host;
-  host.innerHTML=`<div class="pop-shell"><header class="pop-top"><span class="pop-brand"><b>✚</b> JOYSTICK POP</span><div class="pop-record"><span>${txt.record}</span><strong>${Number(localStorage.getItem(STORAGE_KEY_RECORD)||0)}</strong></div><button class="pop-sound" aria-label="Música" aria-pressed="${!MusicController.isMuted()}">${MusicController.isMuted()?'🔇':'🔊'}</button></header><main class="pop-main"><div class="pop-intro"><h1 class="pop-title"><span>JOYSTICK</span><span>POP!</span></h1><p class="pop-rule">${txt.rule}</p><button class="pop-play">${txt.play}</button><div class="pop-secondary"><button data-action="how">${txt.how}</button><button data-action="ranking">${txt.rank}</button></div><div class="pop-instruction"><span>✚</span><p>${txt.hint}</p></div></div><div class="pop-characters"><div class="pop-select-header"><span>${txt.choose}</span><span class="pop-index"></span></div><div class="pop-showcase"><div class="pop-stage"></div><button class="pop-arrow pop-prev" aria-label="Personaje anterior">‹</button><button class="pop-arrow pop-next" aria-label="Personaje siguiente">›</button><div class="pop-character-name"></div><button class="pop-rotate" aria-pressed="false">↻ ${txt.rotate}</button></div><div class="pop-cards">${CHARACTERS.map(c=>`<button class="pop-card" data-character="${c.id}" aria-pressed="false"><span class="pop-check">✓</span><img alt="${c.name}"/><span>${c.name}</span></button>`).join('')}</div></div></main><footer class="pop-footer"><span class="pop-footer-hint">${txt.hint}</span><div class="pop-langs">${['es','en','pt'].map(l=>`<button data-lang="${l}" aria-pressed="${lang===l}">${l.toUpperCase()}</button>`).join('')}</div></footer></div>`;
+  host.innerHTML=`<div class="pop-shell"><header class="pop-top"><span class="pop-brand"><b>✚</b> JOYSTICK POP</span><div class="pop-record"><span>${txt.record}</span><strong>${Number(localStorage.getItem(STORAGE_KEY_RECORD)||0)}</strong></div><button class="pop-sound" aria-label="Música" aria-pressed="${!MusicController.isMuted()}">${MusicController.isMuted()?'🔇':'🔊'}</button></header><main class="pop-main"><div class="pop-intro"><h1 class="pop-title"><span>JOYSTICK</span><span>POP!</span></h1><p class="pop-rule">${txt.rule}</p><button class="pop-play">${txt.play}</button><div class="pop-secondary"><button data-action="how">${txt.how}</button><button data-action="ranking">${txt.rank}</button></div><div class="pop-instruction"><span>✚</span><p>${txt.hint}</p></div></div><div class="pop-characters"><div class="pop-select-header"><span>${txt.choose}</span><span class="pop-index"></span></div><div class="pop-showcase"><div class="pop-stage"></div><button class="pop-arrow pop-prev" aria-label="Personaje anterior">‹</button><button class="pop-arrow pop-next" aria-label="Personaje siguiente">›</button><div class="pop-character-name"></div><button class="pop-rotate" aria-pressed="false">↻ ${txt.rotate}</button></div><div class="pop-cards">${CHARACTERS.map(c=>`<button class="pop-card" data-character="${c.id}" aria-pressed="false"><span class="pop-check">✓</span><img alt="${c.name}"/><span>${c.name}</span></button>`).join('')}</div></div></main><footer class="pop-footer"><span class="pop-footer-hint">${txt.hint}</span><span class="pop-version" title="Versión del juego">v${pkg.version}</span><div class="pop-langs">${['es','en','pt'].map(l=>`<button data-lang="${l}" aria-pressed="${lang===l}">${l.toUpperCase()}</button>`).join('')}</div></footer></div>`;
   document.body.appendChild(host);
+  // El récord que se acaba de dibujar salió del localStorage, que es por
+  // dispositivo. Cuando llega la sesión, SuraIntegrationService deja ahí el
+  // récord autoritativo de la cuenta, así que se vuelve a leer y se pinta.
+  // Sin esto el menú se queda con el número del arranque hasta el próximo
+  // cambio de escena. `onSessionReady` corre en el acto si el handshake ya
+  // terminó, así que sirve en los dos órdenes de llegada.
+  const sura=this.registry.get('suraService') as SuraIntegrationService|undefined;
+  const stopRecordWatch=sura?.onSessionReady(()=>{const node=host.querySelector('.pop-record strong');if(node)node.textContent=String(Number(localStorage.getItem(STORAGE_KEY_RECORD)||0))});
+  if(stopRecordWatch)this.events.once(Phaser.Scenes.Events.SHUTDOWN,stopRecordWatch);
   document.getElementById('pop-boot')?.remove();
   try{this.stage=new CharacterStage(host.querySelector('.pop-stage')!,this.selected);const images=this.stage.thumbnails();host.querySelectorAll<HTMLImageElement>('.pop-card img').forEach(img=>{img.src=images[img.parentElement!.dataset.character!]})}catch(e){console.error(e);host.querySelector('.pop-stage')!.textContent='No se pudo cargar el personaje. Recargá la página.'}
   this.select(this.selected);

@@ -12,7 +12,8 @@
 	},
 	"leaderboard": {
 		"title": "Leaderboard",
-		"loading": "Loading..."
+		"loading": "Loading...",
+		"error": "Couldn't load the leaderboard"
 	},
 	"pause": {
 		"title": "Paused",

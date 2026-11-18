@@ -12,7 +12,8 @@
 	},
 	"leaderboard": {
 		"title": "Ranking",
-		"loading": "Cargando..."
+		"loading": "Cargando...",
+		"error": "No se pudo cargar el ranking"
 	},
 	"pause": {
 		"title": "Pausa",

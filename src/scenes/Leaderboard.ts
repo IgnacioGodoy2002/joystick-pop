@@ -6,6 +6,7 @@ import button from '~/ui/Buttons'
 import leaderboardPanel from '~/ui/LeaderboardPanel'
 import fetchLeaderboard from '~/services/LeaderboardService'
 import SceneKeys from '~/consts/SceneKeys'
+import getSuraConfig from '~/integration/sura/SuraRuntimeConfig'
 import SuraIntegrationService from '~/integration/sura/SuraIntegrationService'
 import { i18next } from '~/i18n'
 
@@ -15,11 +16,16 @@ export default class Leaderboard extends Phaser.Scene
 	private overlay?: Phaser.GameObjects.Rectangle
 	private title?: Phaser.GameObjects.Text
 	private loadingText?: Phaser.GameObjects.Text
+	private errorText?: Phaser.GameObjects.Text
 	private panel?: Phaser.GameObjects.DOMElement
 	private backBtn?: Phaser.GameObjects.DOMElement
 
+	private shutdown = false
+
 	create()
 	{
+		this.shutdown = false
+
 		const width = this.scale.width
 		const height = this.scale.height
 		const x = width * 0.5
@@ -85,20 +91,61 @@ export default class Leaderboard extends Phaser.Scene
 
 		const suraService = this.registry.get('suraService') as SuraIntegrationService | undefined
 
+		// Embebido el fetch no puede salir hasta que el handshake haya
+		// traído gameId/apiBaseUrl. En mobile esa respuesta puede llegar
+		// después de que esta pantalla ya esté abierta -- antes se pedía el
+		// ranking igual, sin esos datos, y se caía al listado de relleno:
+		// el jugador veía nombres inventados como si fueran el ranking real.
+		// onSessionReady además corre en el acto si el handshake ya terminó.
+		let unsubscribe: (() => void) | undefined
+
+		if (suraService)
+		{
+			unsubscribe = suraService.onSessionReady(() => {
+				// `embedded` se decide recién acá, no al crear la escena: en
+				// el WebView nativo el bridge del host aparece después de la
+				// carga, así que preguntarlo antes daría standalone por error
+				// y mostraría el listado de relleno.
+				this.loadLeaderboard(suraService, getSuraConfig().isEmbedded)
+			})
+		}
+		else
+		{
+			this.loadLeaderboard(undefined, getSuraConfig().isEmbedded)
+		}
+
+		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+
+		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+			this.shutdown = true
+			unsubscribe?.()
+			this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+		})
+	}
+
+	private loadLeaderboard(suraService: SuraIntegrationService | undefined, embedded: boolean)
+	{
 		fetchLeaderboard({
 			gameId: suraService?.getGameId(),
-			apiBaseUrl: suraService?.getApiBaseUrl()
+			apiBaseUrl: suraService?.getApiBaseUrl(),
+			embedded
 		}).then(entries => {
-			if (!this.loadingText)
+			if (this.shutdown)
 			{
 				// la escena ya se destruyó antes de que resolviera el fetch
 				return
 			}
 
-			this.loadingText.destroy()
+			this.loadingText?.destroy()
 			this.loadingText = undefined
 
-			this.panel = this.add.dom(x, height * 0.52, leaderboardPanel(entries))
+			if (!entries || entries.length === 0)
+			{
+				this.showError()
+				return
+			}
+
+			this.panel = this.add.dom(this.scale.width * 0.5, this.scale.height * 0.52, leaderboardPanel(entries))
 				.setScale(0, 0)
 
 			this.tweens.add({
@@ -108,12 +155,20 @@ export default class Leaderboard extends Phaser.Scene
 				duration: 300
 			})
 		})
+	}
 
-		this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this)
-
-		this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-			this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this)
+	// Un ranking que no se pudo traer se dice, no se disimula con datos de
+	// relleno (ver LeaderboardService).
+	private showError()
+	{
+		this.errorText = this.add.text(this.scale.width * 0.5, this.scale.height * 0.5, i18next.t('leaderboard.error'), {
+			fontFamily: 'Righteous',
+			fontSize: Math.min(this.scale.width * 0.05, 32),
+			color: '#ffffff',
+			align: 'center',
+			wordWrap: { width: this.scale.width * 0.8 }
 		})
+		.setOrigin(0.5, 0.5)
 	}
 
 	// el navegador mobile puede colapsar la barra de direcciones después de
@@ -142,6 +197,7 @@ export default class Leaderboard extends Phaser.Scene
 		}
 
 		this.loadingText?.setPosition(x, height * 0.5)
+		this.errorText?.setPosition(x, height * 0.5)
 		this.panel?.setPosition(x, height * 0.52)
 
 		this.backBtn?.setPosition(x, height * 0.92)

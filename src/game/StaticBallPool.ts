@@ -56,6 +56,15 @@ export default class StaticBallPool extends Phaser.Physics.Arcade.StaticGroup im
 
 		ball.useCircleCollider()
 
+		// posición canónica de arranque -- `this.get(x, y, ...)` ya la dejó
+		// en (x, y), pero home/offset son campos propios de Ball que hay que
+		// sincronizar explícitamente o una bola reciclada arrastraría el home
+		// (y el offset de animación) de su vida anterior
+		ball.setHome(x, y)
+
+		// arranca una vida nueva: ya no está muriéndose
+		ball.retiring = false
+
 		ball.emit('on-spawned')
 
 		if (spawnExisting)
@@ -75,6 +84,12 @@ export default class StaticBallPool extends Phaser.Physics.Arcade.StaticGroup im
 
 	despawn(ball: IBall)
 	{
+		// cortar cualquier animación pendiente ANTES de reciclar: si no, el
+		// tween sigue vivo y le escribe el offset de esta vida a la próxima
+		// bola que salga de este mismo sprite (ver Ball.setAnimationTween)
+		ball.stopAnimation()
+		ball.setVisualOffset(0, 0)
+
 		this.killAndHide(ball)
 
 		this.world.remove(ball.body)
