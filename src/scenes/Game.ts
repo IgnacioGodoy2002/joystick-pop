@@ -93,7 +93,7 @@ export default class Game extends Phaser.Scene
 
 		// fondo de pantalla completa durante la partida (reemplaza el
 		// degradé visualmente, que queda debajo por si tarda en cargar).
-		// Se reajusta en handleResize() -- ver punto 4 de CLAUDE.md, el
+		// Se reajusta en handleResize() -- ver notas de resize, el
 		// mismo bug del resize tardío en mobile que ya afecta a GameUI/Pause/etc.
 		this.background = this.add.image(width * 0.5, height * 0.5, TextureKeys.GameCanvasBackground)
 			.setDepth(0)
@@ -205,7 +205,7 @@ export default class Game extends Phaser.Scene
 	// el navegador mobile puede colapsar la barra de direcciones después de
 	// que esta escena ya se creó -- sin esto el fondo queda encuadrado
 	// contra el scale.width/height viejo (mismo bug de resize tardío
-	// documentado en el punto 4 de CLAUDE.md)
+	// documentado en las notas de resize)
 	private handleResize()
 	{
 		this.applyBackgroundCover(this.scale.width, this.scale.height)
